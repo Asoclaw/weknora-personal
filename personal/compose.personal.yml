@@ -1,0 +1,9 @@
+services:
+  frontend:
+    image: weknora-personal-ui:v0.8.0
+    build: !reset null
+  app:
+    image: weknora-personal-app:v0.8.0
+    build: !reset null
+  postgres:
+    image: paradedb/paradedb:v0.22.6-pg17

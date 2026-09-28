@@ -1,0 +1,2 @@
+FROM wechatopenai/weknora-app:v0.8.0
+COPY WeKnora-personal /app/WeKnora
