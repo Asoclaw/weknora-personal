@@ -651,7 +651,7 @@ const connectorDefs = computed<ConnectorDef[]>(() => ([
       { key: 'access_token', labelKey: 'datasource.gitlab.accessToken', placeholder: '', secret: true },
     ],
   },
-] as ConnectorDef[]).filter(def => !personalMode || def.type === 'tencent_docs'))
+] as ConnectorDef[]).filter(def => !personalMode || ['tencent_docs', 'feishu', 'feishu_drive'].includes(def.type)))
 
 
 const currentDef = computed(() => connectorDefs.value.find(d => d.type === form.value.type))

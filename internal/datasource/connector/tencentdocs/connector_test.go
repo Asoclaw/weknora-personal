@@ -116,6 +116,46 @@ func TestMCPFailureDoesNotExposeToken(t *testing.T) {
 	}
 }
 
+func TestSaaSSharedProjectFolderAppearsAtRoot(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var request struct {
+			Params struct {
+				Arguments map[string]any `json:"arguments"`
+			} `json:"params"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Fatal(err)
+		}
+		listType := request.Params.Arguments["list_type"]
+		parent, _ := request.Params.Arguments["parent_id"].(string)
+		var files []map[string]any
+		switch {
+		case parent == "fms":
+			if listType != float64(1) {
+				t.Errorf("shared folder children must use My Documents listing")
+			}
+			files = []map[string]any{{"file_id": "phase-1", "name": "项目启动", "is_folder": true}}
+		case listType == float64(5):
+			files = []map[string]any{{"file_id": "fms", "name": "格力FMS项目", "is_folder": true}}
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": 1,
+			"result": map[string]any{"structuredContent": map[string]any{"files": files, "finish": true}}})
+	}))
+	defer server.Close()
+	connector := &Connector{newClient: func(site, token string) (*mcpClient, error) {
+		return &mcpClient{http: server.Client(), token: token, endpoint: server.URL}, nil
+	}}
+	config := &types.DataSourceConfig{Credentials: map[string]any{"token": "test"}, Settings: map[string]any{"site": siteSaaS}}
+	root, err := connector.ListResources(context.Background(), config, rootResourceID)
+	if err != nil || len(root) != 1 || root[0].Name != "格力FMS项目" {
+		t.Fatalf("shared project folder missing from root: resources=%+v err=%v", root, err)
+	}
+	children, err := connector.ListResources(context.Background(), config, "fms")
+	if err != nil || len(children) != 1 || children[0].Name != "项目启动" {
+		t.Fatalf("shared folder children missing: resources=%+v err=%v", children, err)
+	}
+}
+
 func TestUnsupportedDocumentIsReportedOncePerVersion(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var request struct {

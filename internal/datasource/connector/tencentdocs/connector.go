@@ -68,57 +68,77 @@ func listFolder(ctx context.Context, client *mcpClient, site, folderID string) (
 	}
 	files := []remoteFile{}
 	const pageSize = 20
+	if site == siteSaaS {
+		// Shared project folders are listed separately from "My Documents".
+		// Their children are still read with list_type=1 and parent_id.
+		listTypes := []int{1}
+		if folderID == "" {
+			listTypes = append(listTypes, 5)
+		}
+		seen := map[string]bool{}
+		for _, listType := range listTypes {
+			complete := false
+			for offset := 0; offset < 20000; offset += pageSize {
+				args := map[string]any{"list_type": listType, "offset": offset, "count": pageSize}
+				if folderID != "" {
+					args["parent_id"] = folderID
+				}
+				var response struct {
+					Files []struct {
+						ID         string `json:"file_id"`
+						Name       string `json:"name"`
+						URL        string `json:"doc_url"`
+						Ext        string `json:"ext"`
+						ModifiedAt int64  `json:"modify_time"`
+						IsFolder   bool   `json:"is_folder"`
+					} `json:"files"`
+					Finish bool `json:"finish"`
+				}
+				if err := client.call(ctx, "manage.list_file", args, &response); err != nil {
+					return nil, err
+				}
+				for _, file := range response.Files {
+					if file.ID == "" || seen[file.ID] {
+						continue
+					}
+					seen[file.ID] = true
+					files = append(files, remoteFile{ID: file.ID, Name: file.Name, URL: file.URL,
+						Ext: file.Ext, ModifiedAt: file.ModifiedAt, IsFolder: file.IsFolder})
+				}
+				if response.Finish || len(response.Files) < pageSize {
+					complete = true
+					break
+				}
+			}
+			if !complete {
+				return nil, errors.New("Tencent Docs folder listing exceeded the page limit")
+			}
+		}
+		return files, nil
+	}
 	for offset := 0; offset < 20000; offset += pageSize {
-		if site == siteSaaS {
-			args := map[string]any{"list_type": 1, "offset": offset, "count": pageSize}
-			if folderID != "" {
-				args["parent_id"] = folderID
-			}
-			var response struct {
-				Files []struct {
-					ID         string `json:"file_id"`
-					Name       string `json:"name"`
-					URL        string `json:"doc_url"`
-					Ext        string `json:"ext"`
-					ModifiedAt int64  `json:"modify_time"`
-					IsFolder   bool   `json:"is_folder"`
-				} `json:"files"`
-				Finish bool `json:"finish"`
-			}
-			if err := client.call(ctx, "manage.list_file", args, &response); err != nil {
-				return nil, err
-			}
-			for _, file := range response.Files {
-				files = append(files, remoteFile{ID: file.ID, Name: file.Name, URL: file.URL,
-					Ext: file.Ext, ModifiedAt: file.ModifiedAt, IsFolder: file.IsFolder})
-			}
-			if response.Finish || len(response.Files) < pageSize {
-				return files, nil
-			}
-		} else {
-			args := map[string]any{"start": offset}
-			if folderID != "" {
-				args["folder_id"] = folderID
-			}
-			var response struct {
-				List []struct {
-					ID       string `json:"id"`
-					Title    string `json:"title"`
-					URL      string `json:"url"`
-					IsFolder bool   `json:"is_folder"`
-				} `json:"list"`
-				Finish bool `json:"finish"`
-			}
-			if err := client.call(ctx, "manage.folder_list", args, &response); err != nil {
-				return nil, err
-			}
-			for _, file := range response.List {
-				files = append(files, remoteFile{ID: file.ID, Name: file.Title, URL: file.URL,
-					IsFolder: file.IsFolder})
-			}
-			if response.Finish || len(response.List) < pageSize {
-				return files, nil
-			}
+		args := map[string]any{"start": offset}
+		if folderID != "" {
+			args["folder_id"] = folderID
+		}
+		var response struct {
+			List []struct {
+				ID       string `json:"id"`
+				Title    string `json:"title"`
+				URL      string `json:"url"`
+				IsFolder bool   `json:"is_folder"`
+			} `json:"list"`
+			Finish bool `json:"finish"`
+		}
+		if err := client.call(ctx, "manage.folder_list", args, &response); err != nil {
+			return nil, err
+		}
+		for _, file := range response.List {
+			files = append(files, remoteFile{ID: file.ID, Name: file.Title, URL: file.URL,
+				IsFolder: file.IsFolder})
+		}
+		if response.Finish || len(response.List) < pageSize {
+			return files, nil
 		}
 	}
 	return nil, errors.New("Tencent Docs folder listing exceeded the page limit")

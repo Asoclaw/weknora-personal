@@ -336,6 +336,7 @@ const syncSettingsRoute = (sectionKey: string) => {
 }
 
 const isSectionSupported = (key: string): boolean => {
+  if (personalMode && !personalSections.has(key)) return false
   if (isIntegrationSection(key)) {
     return deploymentCapabilities.isSupported(
       INTEGRATION_TAB_CAPABILITY[integrationTabFromSection(key)],
@@ -516,6 +517,19 @@ const handleClose = () => {
   uiStore.closeSettings()
   // 如果当前路由是设置页，返回上一页
   if (route.path === '/platform/settings') {
+    // A document link in browser history includes knowledge_id. Returning to
+    // that URL would reopen its detail drawer immediately after settings close.
+    const back = window.history.state?.back
+    if (personalMode && typeof back === 'string') {
+      const previous = new URL(back, window.location.origin)
+      if (previous.origin === window.location.origin &&
+        previous.pathname.startsWith('/platform/knowledge-bases/') &&
+        previous.searchParams.has('knowledge_id')) {
+        previous.searchParams.delete('knowledge_id')
+        void router.replace(previous.pathname + previous.search + previous.hash)
+        return
+      }
+    }
     const sec = route.query.section
     if (sec === 'system-global' || sec === 'runtime-queues' || sec === 'platform-api-keys' || sec === 'system-audit-log') {
       router.push('/platform/knowledge-bases')
