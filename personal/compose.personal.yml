@@ -1,9 +1,14 @@
 services:
   frontend:
-    image: weknora-personal-ui:v0.8.0
+    image: weknora-personal-ui:v0.8.2
     build: !reset null
   app:
-    image: weknora-personal-app:v0.8.0
+    image: weknora-personal-app:v0.8.2
+    build: !reset null
+    environment:
+      WEKNORA_VERSION: v0.8.2
+  docreader:
+    image: wechatopenai/weknora-docreader:v0.8.2
     build: !reset null
   postgres:
     image: paradedb/paradedb:v0.22.6-pg17

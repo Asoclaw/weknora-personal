@@ -79,3 +79,35 @@ func TestSaaSSharedFoldersReadOnlyIntegration(t *testing.T) {
 		t.Fatalf("shared project folder cannot be expanded: children=%d err=%v", len(children), err)
 	}
 }
+
+func TestSaaSSingleDocumentReadOnlyIntegration(t *testing.T) {
+	token := os.Getenv("TENCENT_DOCS_TOKEN")
+	if token == "" || os.Getenv("TENCENT_DOCS_INTEGRATION") != "1" {
+		t.Skip("requires explicit Tencent Docs integration test environment")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	client, err := newMCPClient(siteSaaS, token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := listFolder(ctx, client, siteSaaS, rootResourceID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checked := 0
+	for _, file := range files {
+		if file.IsFolder {
+			continue
+		}
+		checked++
+		item := fetchContent(ctx, client, siteSaaS, file, "")
+		if len(item.Content) > 0 && item.Metadata["error"] == "" {
+			return
+		}
+		if checked == 5 {
+			break
+		}
+	}
+	t.Fatal("no readable document in the bounded sample")
+}

@@ -97,7 +97,7 @@
           </ResultGroup>
 
           <!-- Agent matches -->
-          <ResultGroup v-if="!personalMode && isGroupVisible('agents') && agentMatches.length" :label="t('commandPalette.group.agents')">
+          <ResultGroup v-if="isGroupVisible('agents') && agentMatches.length" :label="t('commandPalette.group.agents')">
             <ResultItem v-for="(a, i) in agentMatches" :key="'a-' + a.id" :index="flatIndexFor('agents', i)"
               :selected="selectedIndex === flatIndexFor('agents', i)" :shortcut="shortcutFor(flatIndexFor('agents', i))"
               icon-name="user-circle" :title="a.name" :subtitle="a.description" @primary="openAgent(a.id)"
@@ -261,7 +261,7 @@ const allCommands = computed(() => {
     close: () => commandPaletteStore.closePalette(),
   })
   return cmds.filter((command) => {
-    if (personalMode && (command.id === 'open-agents' || command.id === 'open-organizations' || command.id === 'open-product-tour')) {
+    if (personalMode && (command.id === 'open-organizations' || command.id === 'open-product-tour')) {
       return false
     }
     if (command.id === 'open-agents') {
@@ -676,7 +676,7 @@ onUnmounted(() => {
 
 .cmdk__input-icon {
   color: var(--td-text-color-placeholder);
-  font-size: 16px;
+  font-size: var(--app-text-xl);
 }
 
 .cmdk__scope-chip {
@@ -688,8 +688,8 @@ onUnmounted(() => {
   padding: 0 2px 0 8px;
   background: var(--td-bg-color-secondarycontainer);
   color: var(--td-text-color-primary);
-  border-radius: 4px;
-  font-size: 12px;
+  border-radius: var(--app-radius-xs);
+  font-size: var(--app-text-sm);
   font-weight: 500;
   flex-shrink: 0;
 
@@ -735,7 +735,7 @@ onUnmounted(() => {
   border: none;
   outline: none;
   background: transparent;
-  font-size: 15px;
+  font-size: var(--app-text-lg);
   color: var(--td-text-color-primary);
   font-family: inherit;
 
@@ -756,7 +756,7 @@ onUnmounted(() => {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--app-radius-sm);
   background: transparent;
   color: var(--td-text-color-secondary);
   cursor: pointer;
@@ -783,7 +783,7 @@ onUnmounted(() => {
   gap: 12px;
   padding: 40px 20px 20px;
   color: var(--td-text-color-placeholder);
-  font-size: 13px;
+  font-size: var(--app-text-md);
 
   p {
     margin: 0;
@@ -800,7 +800,7 @@ onUnmounted(() => {
   gap: 16px;
   padding: 8px 14px;
   border-top: 1px solid var(--td-component-stroke);
-  font-size: 11px;
+  font-size: var(--app-text-xs);
   color: var(--td-text-color-placeholder);
   flex-wrap: wrap;
 }
@@ -814,7 +814,7 @@ onUnmounted(() => {
     display: inline-block;
     padding: 1px 5px;
     min-width: 16px;
-    font-size: 10px;
+    font-size: var(--app-text-2xs);
     font-family: inherit;
     line-height: 14px;
     text-align: center;
@@ -826,7 +826,7 @@ onUnmounted(() => {
 }
 
 .cmdk-chunk-kb {
-  font-size: 11px;
+  font-size: var(--app-text-xs);
   color: var(--td-text-color-placeholder);
   padding: 1px 6px;
   background: var(--td-bg-color-secondarycontainer);
@@ -843,7 +843,7 @@ onUnmounted(() => {
   display: inline-block;
   margin-right: 6px;
   padding: 0 5px;
-  font-size: 10px;
+  font-size: var(--app-text-2xs);
   font-weight: 600;
   background: var(--td-bg-color-secondarycontainer);
   color: var(--td-text-color-secondary);

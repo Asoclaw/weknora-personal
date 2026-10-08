@@ -25,7 +25,7 @@ try {
 
     $manifest = [ordered]@{
         created_at = (Get-Date).ToUniversalTime().ToString('o')
-        source = 'WeKnora v0.8.0 production containers'
+        source = 'WeKnora production containers'
         postgres_sha256 = (Get-FileHash -LiteralPath $databaseFile -Algorithm SHA256).Hash
         files_sha256 = (Get-FileHash -LiteralPath $filesArchive -Algorithm SHA256).Hash
     }
