@@ -1226,11 +1226,23 @@ const pendingKnowledgeId = ref<string | null>(
 
 let autoOpenRequest = 0;
 
+const clearDocumentLink = () => {
+  if (!route.query.knowledge_id) return;
+  void router.replace({
+    path: route.path,
+    query: { ...route.query, knowledge_id: undefined },
+    hash: route.hash,
+  });
+};
+
 const tryAutoOpenDocument = async () => {
   if (!pendingKnowledgeId.value) return;
   const targetId = pendingKnowledgeId.value;
   pendingKnowledgeId.value = null;
   const request = ++autoOpenRequest;
+  // A document link is a one-time navigation, not persistent drawer state.
+  // Consume it before loading details so a refresh does not reopen the drawer.
+  if (route.query.knowledge_id === targetId) clearDocumentLink();
   const card = cardList.value.find((c: KnowledgeCard) => c.id === targetId);
 
   // The current card list only contains the folder being browsed. A document
@@ -1254,6 +1266,7 @@ const tryAutoOpenDocument = async () => {
 
   if (request !== autoOpenRequest) return;
   await nextTick();
+  if (request !== autoOpenRequest) return;
   openCardDetails(target);
 };
 
@@ -1289,6 +1302,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  ++autoOpenRequest;
   window.removeEventListener('knowledgeFileUploaded', handleFileUploaded as EventListener);
   window.removeEventListener('openURLImportDialog', handleOpenURLImportDialog as EventListener);
   window.removeEventListener('weknora:knowledge-file-drop', handleKnowledgeFileDrop as EventListener);
@@ -1418,7 +1432,10 @@ const updateStatus = (analyzeList: KnowledgeCard[]) => {
 // 恢复文档处理状态（用于刷新后恢复）
 
 const closeDoc = () => {
+  ++autoOpenRequest;
+  pendingKnowledgeId.value = null;
   isCardDetails.value = false;
+  clearDocumentLink();
 };
 const openCardDetails = (item: KnowledgeCard) => {
   isCardDetails.value = true;
