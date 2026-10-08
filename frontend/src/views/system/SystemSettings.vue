@@ -68,7 +68,7 @@
     <template v-else>
       <t-tabs v-model="activeSettingsSection" class="settings-section-tabs">
         <t-tab-panel value="access" :label="sectionTabLabel('access')" />
-        <t-tab-panel v-if="!personalMode" value="tenant" :label="sectionTabLabel('tenant')" />
+        <t-tab-panel value="tenant" :label="sectionTabLabel('tenant')" />
         <t-tab-panel value="runtime" :label="sectionTabLabel('runtime')" />
         <t-tab-panel value="security" :label="sectionTabLabel('security')" />
         <t-tab-panel v-if="hasUnknownSettings" value="other" :label="sectionTabLabel('other')" />
@@ -511,11 +511,17 @@ watch(hasUnknownSettings, (hasUnknown) => {
   }
 })
 
+const personalTeamSettingKeys = new Set([
+  'auth.default_tenant_mode', 'tenant.self_service_creation_enabled',
+  'tenant.max_owned_per_user', 'tenant.auto_accept_invitation',
+])
+const isPersonalSetting = (key: string) => !personalMode || !personalTeamSettingKeys.has(key)
+
 const activeSectionSettings = computed(() => {
-  if (activeSettingsSection.value === 'other') return unknownSettings.value
+  if (activeSettingsSection.value === 'other') return unknownSettings.value.filter(item => isPersonalSetting(item.key))
   return SETTINGS_SECTION_KEYS[activeSettingsSection.value]
     .map((key) => settingsByKey.value.get(key))
-    .filter((item): item is SystemSettingItem => Boolean(item))
+    .filter((item): item is SystemSettingItem => Boolean(item) && isPersonalSetting(item!.key))
 })
 
 const activeSectionTitle = computed(() =>
@@ -529,7 +535,7 @@ const activeSectionDescription = computed(() =>
 function sectionTabLabel(section: SettingsSection): string {
   const count = section === 'other'
     ? unknownSettings.value.length
-    : SETTINGS_SECTION_KEYS[section].filter((key) => settingsByKey.value.has(key)).length + (section === 'access' ? 2 : 0)
+    : SETTINGS_SECTION_KEYS[section].filter((key) => settingsByKey.value.has(key) && isPersonalSetting(key)).length + (section === 'access' && !personalMode ? 2 : 0)
   return t(`system.globalSettings.sections.${section}.tab`, { count })
 }
 

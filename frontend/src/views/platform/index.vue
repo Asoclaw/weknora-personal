@@ -17,7 +17,7 @@
         <!-- 知识库文件上传进度浮层：上传队列放在 store 里，切换页面不中断 -->
         <UploadTasksPanel />
         <!-- 带遮罩层的新手引导：首次进入自动开启，可从用户菜单顶部昵称旁帮助按钮重新打开 -->
-        <NewUserGuide v-if="!personalMode" />
+        <NewUserGuide />
     </div>
 </template>
 <script setup lang="ts">

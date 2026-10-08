@@ -261,7 +261,7 @@ const allCommands = computed(() => {
     close: () => commandPaletteStore.closePalette(),
   })
   return cmds.filter((command) => {
-    if (personalMode && (command.id === 'open-organizations' || command.id === 'open-product-tour')) {
+    if (personalMode && command.id === 'open-organizations') {
       return false
     }
     if (command.id === 'open-agents') {

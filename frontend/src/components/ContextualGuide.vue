@@ -21,7 +21,6 @@ const props = defineProps<{
 }>()
 
 const config: ContextualGuideTourConfig = CONTEXTUAL_GUIDE_TOURS[props.tour]
-const personalMode = import.meta.env.VITE_PERSONAL_MODE === 'true'
 const active = ref(false)
 
 let openTimer: ReturnType<typeof setTimeout> | null = null
@@ -39,7 +38,6 @@ const clearTimers = () => {
 }
 
 const tryOpen = () => {
-	if (personalMode) return
   if (active.value) return
   if (!props.when) return
   if (isContextualGuideDone(props.tour)) return
@@ -52,7 +50,6 @@ const tryOpen = () => {
 }
 
 const scheduleOpen = () => {
-	if (personalMode) return
   clearTimers()
   if (!props.when || isContextualGuideDone(props.tour)) return
 
