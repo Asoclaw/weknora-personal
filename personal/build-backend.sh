@@ -3,7 +3,7 @@ set -eu
 cd "$(dirname "$0")/.."
 version=$(tr -d '\r\n ' < VERSION)
 version=${version#v}
-commit=$(git rev-parse --short HEAD)
+commit=${PERSONAL_BUILD_COMMIT:-$(git rev-parse --short HEAD)}
 build_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 go_version=$(go env GOVERSION)
 pkg=github.com/Tencent/WeKnora/internal/handler
