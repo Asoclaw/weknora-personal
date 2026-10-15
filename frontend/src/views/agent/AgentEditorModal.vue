@@ -1773,7 +1773,7 @@
       </div>
 
       <!-- 共享管理（仅编辑模式且非内置智能体） -->
-      <div v-if="editorMode === 'edit' && editorAgent?.id && !editorAgent?.is_builtin"
+      <div v-if="!personalMode && editorMode === 'edit' && editorAgent?.id && !editorAgent?.is_builtin"
         v-show="currentSection === 'share'" class="section">
         <AgentShareSettings :agent-id="editorAgent.id" :agent="editorAgent" />
       </div>

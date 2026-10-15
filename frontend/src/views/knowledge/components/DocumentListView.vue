@@ -5,8 +5,11 @@ import { formatFileSize } from '@/utils/files';
 import KnowledgeTagPopover from './KnowledgeTagPopover.vue';
 import DocumentFileIcon from './DocumentFileIcon.vue';
 import DocumentActionMenu from './DocumentActionMenu.vue';
+import { resolveKnowledgeSourceLink } from '@/utils/knowledgeSourceLink';
 import FolderPickerMenu, { type FolderOption } from './FolderPickerMenu.vue';
 import { shownStall } from '@/utils/knowledgeProcessingStall';
+import FolderNavigationItems from './FolderNavigationItems.vue';
+import type { FolderNavigationItem } from '../folderContents';
 
 interface Tag {
   id: string;
@@ -27,6 +30,7 @@ interface KnowledgeItem {
   summary_status?: string;
   updated_at?: string;
   source?: string;
+  metadata?: unknown;
   description?: string;
   channel?: string;
   isMore?: boolean;
@@ -35,6 +39,7 @@ interface KnowledgeItem {
 }
 
 const props = defineProps<{
+  folders?: FolderNavigationItem[];
   items: KnowledgeItem[];
   kbId: string;
   selectedIds: Set<string>;
@@ -61,13 +66,14 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  (e: 'navigate-folder', item: FolderNavigationItem): void;
   (e: 'open', item: KnowledgeItem): void;
   (e: 'toggle-row', id: string, checked: boolean, shiftKey: boolean): void;
   (e: 'toggle-all', checked: boolean): void;
   (e: 'action', action: 'download' | 'edit' | 'reparse' | 'cancel-parse' | 'move' | 'move-folder' | 'delete' | 'view-trace' | 'batch-manage', item: KnowledgeItem): void;
   (e: 'probe-trace', item: KnowledgeItem): void;
   (e: 'tags-changed', payload?: { deletedTagId?: string }): void;
-  (e: 'open-folder', path: string): void;
+  (e: 'open-folder', path: string, item?: any): void;
   (e: 'move-to-folder', item: KnowledgeItem, folderPath: string): void;
   // Move sub-flow emits
   (e: 'move-select-target', kb: any): void;
@@ -277,6 +283,7 @@ const handleAction = (action: 'download' | 'edit' | 'reparse' | 'cancel-parse' |
     </div>
 
     <div class="doc-list-body" role="rowgroup">
+      <FolderNavigationItems v-if="folders?.length" :items="folders" mode="list" @navigate="item => emit('navigate-folder', item)" />
       <div v-for="item in items" :key="item.id" class="doc-list-row"
         :class="{ selected: selectedIds.has(item.id), 'menu-open': moreOpen === item.id }" :data-select-id="item.id"
         role="row" @click="emit('open', item)">
@@ -303,7 +310,7 @@ const handleAction = (action: 'download' | 'edit' | 'reparse' | 'cancel-parse' |
               <span :title="t('knowledgeBase.columnUpdatedAt')">{{ formatTime(item.updated_at) }}</span>
             </span>
             <button v-if="showFolderPath && item.folder_path" type="button" class="row-file-folder"
-              :title="item.folder_path" @click.stop="emit('open-folder', item.folder_path)">
+              :title="item.folder_path" @click.stop="emit('open-folder', item.folder_path, item)">
               <t-icon name="folder" />
               <span>{{ item.folder_path }}</span>
             </button>
@@ -345,7 +352,7 @@ const handleAction = (action: 'download' | 'edit' | 'reparse' | 'cancel-parse' |
           </template>
         </div>
 
-        <div class="cell cell-actions" role="cell" v-if="canEdit" @click.stop>
+        <div class="cell cell-actions" role="cell" v-if="canEdit || resolveKnowledgeSourceLink(item)" @click.stop>
           <t-popup :visible="moreOpen === item.id" placement="bottom-right" trigger="click" destroy-on-close overlay-class-name="card-more"
             :on-visible-change="(v: boolean) => onMoreVisible(item.id, v)">
             <button class="row-more-btn" :class="{ active: moreOpen === item.id }" type="button"
@@ -366,11 +373,12 @@ const handleAction = (action: 'download' | 'edit' | 'reparse' | 'cancel-parse' |
 
               <!-- Normal menu -->
               <div v-else-if="moveMenuMode === 'normal'" class="card-menu">
-                <button type="button" class="card-menu-item row-tag-menu-action" @click.stop="moreOpen = null; tagEditorId = item.id">
+                <button v-if="canEdit" type="button" class="card-menu-item row-tag-menu-action" @click.stop="moreOpen = null; tagEditorId = item.id">
                   <t-icon name="discount" class="icon" />
                   <span>{{ t('knowledgeBase.tagEditDialogHeading') }}</span>
                 </button>
                 <DocumentActionMenu
+                  :can-edit-actions="canEdit"
                   :item="item"
                   :can-download="canDownload"
                   :can-mutate-knowledge="canMutateKnowledge"

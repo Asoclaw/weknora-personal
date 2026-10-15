@@ -446,7 +446,7 @@
       </div>
 
       <!-- 共享设置（仅编辑模式） -->
-      <div v-if="editorMode === 'edit' && activeKbId && currentSection === 'share'" class="section">
+      <div v-if="!personalMode && editorMode === 'edit' && activeKbId && currentSection === 'share'" class="section">
         <KBShareSettings :kb-id="activeKbId" :can-share="canShareKB" />
       </div>
 

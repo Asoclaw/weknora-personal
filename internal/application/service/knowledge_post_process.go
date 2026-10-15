@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/Tencent/WeKnora/internal/application/access"
@@ -177,6 +178,24 @@ func (s *KnowledgePostProcessService) Handle(ctx context.Context, task *asynq.Ta
 		if chunk == nil || chunk.TenantID != payload.TenantID || chunk.KnowledgeID != payload.KnowledgeID ||
 			chunk.KnowledgeBaseID != payload.KnowledgeBaseID {
 			return fmt.Errorf("postprocess chunk binding changed: %w", asynq.SkipRetry)
+		}
+	}
+	if metadata, _ := knowledge.Metadata.Map(); metadata["tencent_docs_requires_ocr"] == "true" {
+		hasOCR := false
+		for _, chunk := range chunks {
+			if chunk.ChunkType == types.ChunkTypeImageOCR && strings.TrimSpace(chunk.Content) != "" {
+				hasOCR = true
+				break
+			}
+		}
+		if !hasOCR {
+			knowledge.ParseStatus = types.ParseStatusFailed
+			knowledge.ErrorMessage = "图片型 PPT 未取得有效 OCR 内容，请检查图片解析与视觉模型后重试"
+			if err := s.knowledgeRepo.UpdateKnowledge(ctx, knowledge); err != nil {
+				return err
+			}
+			s.tracker().SkipSpan(ctx, postSpan, knowledge.ErrorMessage)
+			return nil
 		}
 	}
 

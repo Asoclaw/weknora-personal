@@ -66,6 +66,16 @@ func newStreamHandler(svc *DataSourceService, ds *types.DataSource, result *type
 	return &streamSyncHandler{svc: svc, ds: ds, result: result, syncLog: syncLog}
 }
 
+func TestStreamHandlerAcknowledgesRecordedFailures(t *testing.T) {
+	h := newStreamHandler(&DataSourceService{}, &types.DataSource{}, &types.SyncResult{}, &types.SyncLog{})
+	ok, err := h.EmitAcknowledged(context.Background(), types.FetchedItem{ExternalID: "failed", Metadata: map[string]string{"error": "download failed"}})
+	require.NoError(t, err)
+	require.False(t, ok, "recorded failures must remain retryable")
+	ok, err = h.EmitAcknowledged(context.Background(), types.FetchedItem{ExternalID: "unchanged"})
+	require.NoError(t, err)
+	require.True(t, ok)
+}
+
 // Emit routes items through the same classification as the batch loop: deleted
 // items count into result.Deleted (the actual deletion, scoping and failure
 // counters are covered by the ProcessSync tests) and connector-reported

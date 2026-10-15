@@ -3,6 +3,7 @@ module github.com/Tencent/WeKnora
 go 1.26.0
 
 require (
+	golang.org/x/image v0.38.0
 	codeberg.org/readeck/go-readability/v2 v2.1.2
 	connectrpc.com/connect v1.19.1
 	github.com/DATA-DOG/go-sqlmock v1.5.2

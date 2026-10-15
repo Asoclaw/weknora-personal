@@ -66,6 +66,7 @@ import (
 	"github.com/Tencent/WeKnora/internal/datasource/connector/feishu/wiki"
 	gitlabConnector "github.com/Tencent/WeKnora/internal/datasource/connector/gitlab"
 	imaConnector "github.com/Tencent/WeKnora/internal/datasource/connector/ima"
+	mockplusConnector "github.com/Tencent/WeKnora/internal/datasource/connector/mockplus"
 	notionConnector "github.com/Tencent/WeKnora/internal/datasource/connector/notion"
 	rssConnector "github.com/Tencent/WeKnora/internal/datasource/connector/rss"
 	tencentDocsConnector "github.com/Tencent/WeKnora/internal/datasource/connector/tencentdocs"
@@ -445,6 +446,7 @@ func BuildContainer(container *dig.Container) *dig.Container {
 		must(container.Provide(router.NewCoreAsynqServer, dig.Name("coreAsynqServer")))
 		must(container.Provide(router.NewPostProcessAsynqServer, dig.Name("postProcessAsynqServer")))
 		must(container.Provide(router.NewEnrichmentAsynqServer, dig.Name("enrichmentAsynqServer")))
+		must(container.Provide(router.NewReservedImageAsynqServer, dig.Name("reservedImageAsynqServer")))
 		must(container.Provide(router.NewMaintenanceAsynqServer, dig.Name("maintenanceAsynqServer")))
 		must(container.Provide(router.NewSharedAsynqServer, dig.Name("sharedAsynqServer")))
 		must(container.Provide(router.NewWikiAsynqServer, dig.Name("wikiAsynqServer")))
@@ -1764,6 +1766,10 @@ func NewDuckDB() (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open duckdb: %w", err)
 	}
+	if _, err := sqlDB.Exec("SET memory_limit='256MB'; SET threads=1;"); err != nil {
+		_ = sqlDB.Close()
+		return nil, fmt.Errorf("set DuckDB memory safeguard: %w", err)
+	}
 
 	// Try to install and load required extensions unless explicitly disabled.
 	//   - spatial: used for st_read_meta() to enumerate layer (sheet) names from .xlsx/.xls
@@ -1882,6 +1888,9 @@ func initConnectorRegistry() (*datasource.ConnectorRegistry, error) {
 	}
 	if err := registry.Register(tencentDocsConnector.NewConnector()); err != nil {
 		errs = errors.Join(errs, fmt.Errorf("register tencent_docs connector: %w", err))
+	}
+	if err := registry.Register(mockplusConnector.NewConnector()); err != nil {
+		errs = errors.Join(errs, fmt.Errorf("register mockplus connector: %w", err))
 	}
 	if err := registry.Register(gitlabConnector.NewConnector()); err != nil {
 		errs = errors.Join(errs, fmt.Errorf("register gitlab connector: %w", err))

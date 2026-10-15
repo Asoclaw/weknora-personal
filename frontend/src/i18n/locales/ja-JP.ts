@@ -305,7 +305,7 @@ export default {
       steps: {
         create: {
           title: '最初のナレッジベースを作成',
-          desc: 'ナレッジベースにはドキュメントやFAQを格納します。下のハイライトされた「ナレッジベースを作成」ボタンをクリックすると、入力手順をご案内します。'
+          desc: 'ナレッジベースにはファイルやFAQを格納します。下のハイライトされた「ナレッジベースを作成」ボタンをクリックすると、入力手順をご案内します。'
         }
       }
     },
@@ -314,7 +314,7 @@ export default {
       steps: {
         intro: {
           title: 'まずモデルを設定',
-          desc: 'ドキュメント型ナレッジベースには、チャットモデル（要約とQ&A用）と埋め込みモデル（ベクトル検索用）が少なくとも1つずつ必要です。システム設定から追加してください。'
+          desc: 'ファイル型ナレッジベースには、チャットモデル（要約とQ&A用）と埋め込みモデル（ベクトル検索用）が少なくとも1つずつ必要です。システム設定から追加してください。'
         },
         addModel: {
           title: 'モデルを追加',
@@ -344,7 +344,7 @@ export default {
       steps: {
         type: {
           title: 'タイプを選択',
-          desc: 'ドキュメント型はPDFやWordなどのアップロード向け、FAQ型は質問と回答のペア向けです。タイプは後から変更できません。'
+          desc: 'ファイル型はPDFやWordなどのアップロード向け、FAQ型は質問と回答のペア向けです。タイプは後から変更できません。'
         },
         name: {
           title: '名前を入力',
@@ -372,7 +372,7 @@ export default {
         },
         chunking: {
           title: 'チャンク分割（任意）',
-          desc: '検索用にドキュメントを分割する方法です。デフォルトのチャンクサイズはRAG向けに調整済みで、通常は変更不要です。'
+          desc: '検索用にファイルを分割する方法です。デフォルトのチャンクサイズはRAG向けに調整済みで、通常は変更不要です。'
         },
         storage: {
           title: 'ストレージ（任意）',
@@ -380,7 +380,7 @@ export default {
         },
         navMultimodal: {
           title: 'マルチモーダル／画像（任意）',
-          desc: '図表やスキャン、画像が多く含まれ、視覚的な理解が必要なドキュメントの場合は有効にしてください。'
+          desc: '図表やスキャン、画像が多く含まれ、視覚的な理解が必要なファイルの場合は有効にしてください。'
         },
         multimodalToggle: {
           title: 'マルチモーダル解析を有効化',
@@ -444,7 +444,7 @@ export default {
         },
         navMultimodal: {
           title: '添付ファイルのアップロード（任意）',
-          desc: 'チャットで画像、ドキュメント、音声を送信できるようになります。画像理解にはシステム設定でVLMが必要です。'
+          desc: 'チャットで画像、ファイル、音声を送信できるようになります。画像理解にはシステム設定でVLMが必要です。'
         },
         multimodal: {
           title: '添付ファイルのアップロードを有効化',
@@ -467,12 +467,12 @@ export default {
           desc: '最初の項目を追加すると、検索やチャットで利用できます。対応形式のファイルをドラッグ＆ドロップすることもできます。'
         },
         upload: {
-          title: 'ドキュメントを追加',
+          title: 'ファイルを追加',
           desc: 'このメニューから、ファイルやフォルダのアップロード、URLのインポート、オンラインでの作成ができます。'
         },
         done: {
           title: '解析後に利用可能',
-          desc: 'ドキュメントのインデックスが完了したら、チャットで{\'@\'}を使ってこのナレッジベースを指定すると、出典付きの回答が得られます。'
+          desc: 'ファイルのインデックスが完了したら、チャットで{\'@\'}を使ってこのナレッジベースを指定すると、出典付きの回答が得られます。'
         }
       }
     },
@@ -492,7 +492,7 @@ export default {
         },
         done: {
           title: '準備完了',
-          desc: 'アップロードしたドキュメントに関する質問を試して、根拠付きの回答を確認してみましょう。'
+          desc: 'アップロードしたファイルに関する質問を試して、根拠付きの回答を確認してみましょう。'
         }
       }
     }
@@ -527,8 +527,10 @@ export default {
     sharedTooltip: '共有スペース経由で外部ワークスペースからアクセス'
   },
   knowledgeBase: {
+    sourceGroups: { all: 'All documents', other: 'Other documents', removed: 'Removed data source' },
+
     tagAddAction: 'タグを追加',
-    documentCount: '{count} 件のドキュメント',
+    documentCount: '{count} 件のファイル',
     filters: '絞り込み',
     clearFilters: '絞り込みをクリア',
 
@@ -539,7 +541,7 @@ export default {
       roleOwner: 'オーナー',
       permissionOwner: '編集、設定の管理、ナレッジベースの削除',
       permissionAdmin: '編集、共有の管理',
-      permissionEditor: 'ドキュメントとタグの編集',
+      permissionEditor: 'ファイルとタグの編集',
       permissionViewer: '閲覧と検索のみ',
       fromOrg: '提供元スペース',
       sharedAt: '共有日時',
@@ -560,7 +562,7 @@ export default {
       enabled: '有効',
       vectorStore: 'ベクトルストア',
       fileStorage: 'ファイルストレージ',
-      documentCount: 'ドキュメント数',
+      documentCount: 'ファイル数',
       faqCount: 'FAQ数',
       supportedFileTypes: '対応形式',
       chunking: 'チャンク分割',
@@ -588,16 +590,17 @@ export default {
     },
     tagEditDialogHeading: 'タグを編集',
     folderTree: {
+      showFolders: 'フォルダを表示',
       totalDocuments: '全 {count} 件',
-      countHint: 'このフォルダ内 {direct} 件、サブフォルダを含めて {total} 件',
+      countHint: '直下のファイル：{direct}',
       filteredCount: '{count} 件一致',
       title: 'フォルダ',
       rootRow: 'ルート',
-      rootRowTip: 'ナレッジベースのルート。サブフォルダに属さないドキュメントはここに置かれます',
-      folderCardCount: '{count}件のドキュメント',
+      rootRowTip: 'ナレッジベースのルート。サブフォルダに属さないファイルはここに置かれます',
+      folderCardCount: '{count}件のファイル',
       searchingSubtree: '（サブフォルダを含む）',
-      emptyFolder: 'このフォルダにはまだドキュメントがありません',
-      emptySearch: '該当するドキュメントがありません',
+      emptyFolder: 'このフォルダにはまだファイルがありません',
+      emptySearch: '該当するファイルがありません',
       collapse: 'フォルダを折りたたむ',
       expand: 'フォルダを展開',
       collapseFolder: 'このフォルダを折りたたむ',
@@ -618,8 +621,8 @@ export default {
       newFolderHint: 'Enterキーで作成して移動します',
       newFolderHintRoot: 'ルート直下に作成されます',
       newFolderHintUnder: '「{folder}」の下に作成されます',
-      success: '{count}件のドキュメントを移動しました',
-      failed: 'ドキュメントを移動できませんでした',
+      success: '{count}件のファイルを移動しました',
+      failed: 'ファイルを移動できませんでした',
       duplicate: 'そのフォルダは既に存在します',
     },
     tagFilterTitle: 'タグで絞り込む',
@@ -629,13 +632,13 @@ export default {
     tagManageDescription: 'ナレッジベースのタグを作成、名前変更、削除します',
     tagManageLink: 'タグを管理…',
     tagManageListSection: 'タグ',
-    tagManageDocCount: '{count}件のドキュメント',
+    tagManageDocCount: '{count}件のファイル',
     tagManageFaqCount: '{count}件のFAQ',
     tagPickerSelected: '選択済み',
     tagPickerUnselected: '未選択',
     tagSelectedCount: '{count}件選択中',
     tagPickerSearch: "タグを検索または作成",
-    tagPickerInUse: "使用中のタグです。先にドキュメントとの関連付けを解除してください。",
+    tagPickerInUse: "使用中のタグです。先にファイルとの関連付けを解除してください。",
     tagPickerDeleteConfirm: "タグ「{name}」を削除しますか？",
     untagged: 'タグなし',
     tagCreateAction: 'タグを作成',
@@ -644,7 +647,7 @@ export default {
     tagNameRequired: 'タグ名を入力してください',
     tagCreateSuccess: 'タグを作成しました',
     tagEditSuccess: 'タグを更新しました',
-    tagDeleteDescDoc: 'タグ「{name}」を削除しますか？このタグが付いたドキュメントもすべて削除されます。',
+    tagDeleteDescDoc: 'タグ「{name}」を削除しますか？このタグが付いたファイルもすべて削除されます。',
     tagDeleteSuccess: 'タグを削除しました',
     tagEditAction: '名前を変更',
     tagDeleteAction: '削除',
@@ -653,10 +656,10 @@ export default {
     tagPlaceholder: 'タグを選択',
     noTags: 'タグなし',
     videosFilteredNoVLM: '{count}件の動画ファイルをスキップしました（動画のアップロードには対応していません）',
-    unsupportedTypesHint: '一部のドキュメント形式（{types}）は利用できる解析エンジンがないため、アップロードしても解析できません',
+    unsupportedTypesHint: '一部のファイル形式（{types}）は利用できる解析エンジンがないため、アップロードしても解析できません',
     goToParserSettings: '設定を開く',
     importURL: 'URLからインポート',
-    addDocument: 'ドキュメントを追加',
+    addDocument: 'ファイルを追加',
     importURLTitle: 'URLからインポート',
     urlRequired: 'URLを入力してください',
     invalidURL: '有効なURLを入力してください',
@@ -686,13 +689,19 @@ export default {
     channelYuque: 'Yuque',
     channelGitLab: 'GitLab',
     channelIma: 'Tencent IMA',
+    originalSourceLink: 'Original source link',
+    openOriginalDocument: 'Open original document',
+    copySourceLink: 'Copy link',
+    copySourceLinkFailed: 'Could not copy link',
+    sourceLinkUnavailable: 'Original link unavailable',
+    channelMockplus: 'Mockplus',
     channelUpload: 'アップロード',
     channelManual: '手動作成',
     channelUrl: 'Web',
     channelUnknown: '不明',
     urlSource: '取得元URL',
     webContent: 'Webページの内容',
-    documentContent: 'ドキュメントの内容',
+    documentContent: 'ファイルの内容',
     importTime: 'インポート日時',
     createTime: '作成日時',
     createdAt: '作成',
@@ -709,7 +718,7 @@ export default {
     confirmDeleteQuestion: 'この質問を削除してもよろしいですか？対応するベクトルインデックスも削除されます。',
     legacyQuestionCannotDelete: '旧形式の質問は削除できません。質問を再生成してください。',
     customMetadata: 'カスタムメタデータ',
-    metadataCapabilityHint: 'ドキュメントの要約に使用され、検索後はドキュメントレベルのコンテキストとして利用されます。インデックスには含まれず、検索順位にも影響しません',
+    metadataCapabilityHint: 'ファイルの要約に使用され、検索後はファイルレベルのコンテキストとして利用されます。インデックスには含まれず、検索順位にも影響しません',
     noCustomMetadata: 'カスタムメタデータはありません',
     addMetadataField: 'メタデータ項目を追加',
     metadataKeyPlaceholder: '項目名',
@@ -723,7 +732,7 @@ export default {
     metadataNumberRequired: 'メタデータ項目{key}には有効な数値を入力してください',
     regenerateSummary: '要約を再生成',
     generateSummary: '要約を生成',
-    noDocumentSummary: 'ドキュメントの要約はありません',
+    noDocumentSummary: 'ファイルの要約はありません',
     summaryRefreshed: '要約を更新しました',
     summaryRefreshQueued: '要約の更新を登録しました。完了すると自動的に反映されます',
     indexFailed: 'インデックスの同期に失敗しました',
@@ -761,27 +770,27 @@ export default {
     deleteFailed: '削除に失敗しました。しばらくしてから再試行してください。',
     uploadTime: 'アップロード日時',
     newSession: '新しいチャット',
-    editDocument: 'ドキュメントを編集',
-    rebuildDocument: 'ドキュメントを再構築',
-    rebuildConfirm: 'ドキュメント「{fileName}」を再構築しますか？既存のチャンクを削除して、再度解析します。',
+    editDocument: 'ファイルを編集',
+    rebuildDocument: 'ファイルを再構築',
+    rebuildConfirm: 'ファイル「{fileName}」を再構築しますか？既存のチャンクを削除して、再度解析します。',
     rebuildSubmitted: '再構築タスクを登録しました',
     rebuildFailed: '再構築に失敗しました。しばらくしてから再試行してください',
-    rebuildInProgress: 'このドキュメントは現在解析中です。しばらくしてから再試行してください',
+    rebuildInProgress: 'このファイルは現在解析中です。しばらくしてから再試行してください',
     cancelParse: '解析を停止',
     cancelParseConfirmBody: '「{title}」の解析を停止しますか？書き込み済みのチャンクは保持され、後から「再構築」で再解析できます。最適化段階（要約／Q&A／ナレッジグラフ）の未実行タスクはすぐに破棄されます。',
     cancelParseSubmitted: '解析を停止しました',
     cancelParseFailed: '停止に失敗しました。しばらくしてから再試行してください',
     draft: '下書き',
     draftTip: '一時保存された状態で、検索対象には含まれません',
-    untitledDocument: '無題のドキュメント',
-    deleteDocument: 'ドキュメントを削除',
+    untitledDocument: '無題のファイル',
+    deleteDocument: 'ファイルを削除',
     moveDocument: '移動先を選択...',
     moveToKnowledgeBase: 'ナレッジベースに移動',
     moveNoTargets: '移動可能なナレッジベースがありません（同じタイプかつ同じ埋め込みモデルである必要があります）',
     moveModeReuseVectors: 'ベクトルを再利用（高速）',
     moveModeReuseVectorsDesc: 'チャンクとベクトルインデックスをそのまま移動します。チャンク分割設定が同じ場合に使用してください。',
     moveModeReparse: '再解析',
-    moveModeReparseDesc: '移動先ナレッジベースのチャンク分割設定でドキュメントを再解析します。',
+    moveModeReparseDesc: '移動先ナレッジベースのチャンク分割設定でファイルを再解析します。',
     moveConfirm: '移動を確定',
     moveConfirmTitle: '移動設定の確認',
     moveStarted: '移動タスクを登録しました',
@@ -793,7 +802,7 @@ export default {
     generatingSummary: '要約を生成中...',
     documentSummary: '要約',
     detailSectionMeta: '基本情報',
-    confirmDeleteDocument: 'ドキュメント「{fileName}」を削除しますか？削除後は復元できません',
+    confirmDeleteDocument: 'ファイル「{fileName}」を削除しますか？削除後は復元できません',
     confirmDelete: '削除を確定',
     viewModeGrid: 'グリッド表示',
     viewModeList: 'リスト表示',
@@ -811,35 +820,35 @@ export default {
     batchDelete: '選択項目を削除',
     batchDownload: '選択項目をダウンロード',
     batchDownloading: 'ダウンロードを準備中…',
-    batchDownloadHint: '1回につき最大200件、元ファイル合計512 MiBまでZIPでダウンロードできます。全選択は読み込み済み文書のみ対象で、元ファイルのないウェブページはスキップされます。ZIPはフォルダ構造を保持します。',
+    batchDownloadHint: '1回につき最大200件、元ファイル合計512 MiBまでZIPでダウンロードできます。全選択は読み込み済みファイルのみ対象で、元ファイルのないウェブページはスキップされます。ZIPはフォルダ構造を保持します。',
     batchDownloadStarted: 'ZIPの保存を開始しました。展開してからファイルとフォルダをアップロードしてください。',
     batchDownloadFailed: '一括ダウンロードに失敗しました。もう一度お試しください。',
-    batchDownloadSkipped: '元ファイルのない文書を{count}件スキップしました。',
-    batchDownloadNoFiles: '選択した文書にダウンロードできる元ファイルがありません。',
+    batchDownloadSkipped: '元ファイルのないファイルを{count}件スキップしました。',
+    batchDownloadNoFiles: '選択したファイルにダウンロードできる元ファイルがありません。',
     batchDownloadTooLarge: '選択したファイルの合計が512 MiBを超えています。件数を減らして分批ダウンロードしてください。',
     selectLoaded: '読み込み済みを選択',
-    confirmBatchDeleteDocument: '選択した{count}件のドキュメントを削除しますか？この操作は取り消せません。',
+    confirmBatchDeleteDocument: '選択した{count}件のファイルを削除しますか？この操作は取り消せません。',
     deleteSubmitted: '削除リクエストを送信しました。完了までお待ちください。',
     deletePending: '削除はまだ処理中です。後で更新して結果を確認してください。',
-    deleteTaskFailed: '削除に失敗しました。ドキュメントのエラー詳細を確認して再試行してください。',
-    deleteStatusUnavailable: '削除結果を確認できませんでした。後で更新してドキュメントのステータスを確認してください。',
-    batchDeleteSuccess: '{count}件のドキュメントを削除しました',
+    deleteTaskFailed: '削除に失敗しました。ファイルのエラー詳細を確認して再試行してください。',
+    deleteStatusUnavailable: '削除結果を確認できませんでした。後で更新してファイルのステータスを確認してください。',
+    batchDeleteSuccess: '{count}件のファイルを削除しました',
     batchDeleteFailed: '一括削除に失敗しました',
     batchTag: '一括タグ付け',
     batchTagDialogHeading: '一括タグ付け',
-    batchTagSubtitle: '選択した{count}件のドキュメントにタグを設定します（既存のタグは置き換えられます）',
-    batchTagSuccess: '{count}件のドキュメントにタグを設定しました',
+    batchTagSubtitle: '選択した{count}件のファイルにタグを設定します（既存のタグは置き換えられます）',
+    batchTagSuccess: '{count}件のファイルにタグを設定しました',
     batchTagFailed: '一括タグ付けに失敗しました',
-    confirmBatchReparseDocument: '選択した{count}件のドキュメントを再構築しますか？既存の内容は削除され、各ドキュメントが再解析されます。',
+    confirmBatchReparseDocument: '選択した{count}件のファイルを再構築しますか？既存の内容は削除され、各ファイルが再解析されます。',
     confirmBatchReparse: '確定して再解析',
     batchReparseSuccess: '{count}件の再構築タスクを登録しました',
     batchReparseFailed: '一括再構築に失敗しました',
-    batchReparseSkippedInFlight: '解析中の{count}件のドキュメントをスキップしました',
+    batchReparseSkippedInFlight: '解析中の{count}件のファイルをスキップしました',
     statusCompleted: '完了',
     statusProcessing: '処理中',
     statusFinalizing: '最適化中',
     statusStalled: '停止の可能性',
-    stalledHint: '{minutes} 分間進捗がありません。停止している可能性があります。トレースで停止箇所を確認するか、解析を停止してドキュメントを再構築してください。',
+    stalledHint: '{minutes} 分間進捗がありません。停止している可能性があります。トレースで停止箇所を確認するか、解析を停止してファイルを再構築してください。',
     statusQueued: '待機中',
     queuedHint: '{minutes} 分間進捗がありませんが、タスクはまだキューで待機しています。通常はバックログによるもので、自動的に再開されます。',
     statusFailed: '失敗',
@@ -851,7 +860,7 @@ export default {
     textMarkdownFormat: 'text、markdown形式のファイル、最大200K',
     dragFileNotText: 'テキストやリンクではなくファイルをドラッグしてください',
     searchPlaceholder: 'ナレッジベースを検索...',
-    docSearchPlaceholder: 'ドキュメント名を検索...',
+    docSearchPlaceholder: 'ファイル名を検索...',
     fileTypeFilter: 'ファイル形式',
     allFileTypes: 'すべての形式',
     allTags: 'すべてのタグ',
@@ -883,9 +892,9 @@ export default {
     chunkLoadFailed: 'チャンクの読み込みに失敗しました'
   },
   uploadConfirm: {
-    documentSummary: "ドキュメントの要約",
-    documentSummaryDescription: "今回インポートするドキュメントの要約を自動生成するか選択します。",
-    generateSummary: "ドキュメントの要約を生成",
+    documentSummary: "ファイルの要約",
+    documentSummaryDescription: "今回インポートするファイルの要約を自動生成するか選択します。",
+    generateSummary: "ファイルの要約を生成",
     generateSummaryHint: "既定で有効です。無効にすると要約生成をスキップし、解析、インデックス作成、その他の処理は設定どおり実行されます。",
 
     title: 'アップロードの確認',
@@ -906,11 +915,11 @@ export default {
     summaryTagsCount: 'タグ{count}件',
     confirm: 'アップロードして解析',
     cancel: 'キャンセル',
-    tabTags: 'ドキュメントのタグ',
-    tagsDescription: '今回のインポート対象すべてのドキュメントに付けるタグを選択してください',
+    tabTags: 'ファイルのタグ',
+    tagsDescription: '今回のインポート対象すべてのファイルに付けるタグを選択してください',
     tagsPlaceholder: 'タグを選択（複数選択可）',
     tagsEmpty: 'このナレッジベースにはタグがありません。アップロード後にタグ管理から作成できます。',
-    tagsLoadFailed: 'タグの読み込みに失敗しました。後からドキュメント一覧で設定できます。',
+    tagsLoadFailed: 'タグの読み込みに失敗しました。後からファイル一覧で設定できます。',
     noItems: 'ファイルまたはURLを1件以上追加してください',
     urlItemLabel: 'URL',
     urlAdded: 'URLを追加しました',
@@ -938,7 +947,7 @@ export default {
     confirmManual: '作成して解析',
     titleReparse: '再解析の確認',
     confirmReparse: '確定して再解析',
-    reparseSource: '再解析するドキュメント',
+    reparseSource: '再解析するファイル',
     reparseHint: '前回の解析設定を引き継ぎます。ここで変更できます',
     manualCharCount: '{count}文字'
   },
@@ -3156,18 +3165,18 @@ export default {
       kbId: 'ナレッジベースID',
       kbIdDesc: 'API連携でナレッジベースを指定する際にこのIDを使用します',
       typeLabel: 'ナレッジベースの種類',
-      typeDocument: 'ドキュメント型',
+      typeDocument: 'ファイル型',
       typeFAQ: 'FAQ型',
-      typeDescription: 'FAQ型は構造化されたQ&Aデータに適しています。ドキュメント型はファイルの解析とチャンク分割に対応します。Wiki型はLLMで相互リンクされたナレッジページを自動構築します。',
+      typeDescription: 'FAQ型は構造化されたQ&Aデータに適しています。ファイル型はファイルの解析とチャンク分割に対応します。Wiki型はLLMで相互リンクされたナレッジページを自動構築します。',
       nameLabel: 'ナレッジベース名',
       namePlaceholder: 'ナレッジベース名を入力してください',
       descriptionLabel: 'ナレッジベースの説明',
       descriptionPlaceholder: 'ナレッジベースの説明を入力してください（任意）',
       profile: {
         title: 'AI 生成の説明',
-        hint: 'ドキュメントプロファイルの集計から生成されます。上の手入力の説明を上書きすることはなく、エージェントは両方を読んで質問がこのナレッジベースに属するか判断します。',
-        empty: 'まだ生成されていません。ドキュメントをアップロードし要約が完了したら、下のボタンで生成してください。',
-        noDocuments: 'このナレッジベースには解析済みのドキュメントがまだありません。',
+        hint: 'ファイルプロファイルの集計から生成されます。上の手入力の説明を上書きすることはなく、エージェントは両方を読んで質問がこのナレッジベースに属するか判断します。',
+        empty: 'まだ生成されていません。ファイルをアップロードし要約が完了したら、下のボタンで生成してください。',
+        noDocuments: 'このナレッジベースには解析済みのファイルがまだありません。',
         questions: '典型的な質問',
         generate: 'AI 説明を生成',
         regenerate: '再生成',
@@ -3176,7 +3185,7 @@ export default {
         generateFailed: 'AI 説明の生成に失敗しました',
         adopted: '説明欄にコピーしました。保存すると反映されます',
         failed: '前回の生成に失敗しました：{error}',
-        generatedAt: '{time} に生成 · {count} 件のドキュメントに基づく'
+        generatedAt: '{time} に生成 · {count} 件のファイルに基づく'
       }
     },
     wiki: {
@@ -3191,19 +3200,19 @@ export default {
       extractionInstructionsLabel: 'Wiki抽出の重点',
       extractionInstructionsTip: 'システムのJSONおよび引用プロトコルは変更せずに、優先して抽出するドメイン固有のエンティティや概念を記述します。',
       extractionInstructionsPlaceholder: '例: 製品、バージョン、組織、担当者、中核となる技術概念を優先する…',
-      extractionGranularityTip: 'ドキュメントごとに抽出するWikiのエンティティ／概念の数を制御します。細かいほどインデックスは絞り込まれ、粗いほど網羅的になります',
+      extractionGranularityTip: 'ファイルごとに抽出するWikiのエンティティ／概念の数を制御します。細かいほどインデックスは絞り込まれ、粗いほど網羅的になります',
       granularityFocused: '重点',
       granularityStandard: '標準',
       granularityExhaustive: '網羅',
-      granularityFocusedHint: 'ドキュメントの主題のみを抽出します（例: 履歴書なら本人とそのプロジェクト）。最もすっきりしますが、副次的なエンティティを取りこぼす場合があります。',
+      granularityFocusedHint: 'ファイルの主題のみを抽出します（例: 履歴書なら本人とそのプロジェクト）。最もすっきりしますが、副次的なエンティティを取りこぼす場合があります。',
       granularityStandardHint: '主題に加えて、十分に言及されている副次的なエンティティや概念も抽出します。名前だけの言及は除外します。推奨のデフォルトです。',
       granularityExhaustiveHint: '技術スタックやツールへの軽微な言及も含め、名前付きのエンティティと概念をすべて抽出します。ナレッジベースを用語集として使う場合に適しています。'
     },
     indexing: {
       title: 'インデックス戦略',
-      description: 'ドキュメント処理のパイプラインを設定します。各インデックス方式は個別に有効化・無効化できます。',
+      description: 'ファイル処理のパイプラインを設定します。各インデックス方式は個別に有効化・無効化できます。',
       searchTitle: 'RAG検索',
-      searchDesc: 'ドキュメントをチャンク化し、ベクトル化とキーワードインデックスを作成してハイブリッド検索を行います',
+      searchDesc: 'ファイルをチャンク化し、ベクトル化とキーワードインデックスを作成してハイブリッド検索を行います',
       wikiTitle: 'Wikiナレッジベース',
       wikiDesc: '相互リンクされたWikiページを自動生成し、構造化されたナレッジ体系を構築します',
       graphTitle: 'ナレッジグラフ',
@@ -3212,8 +3221,8 @@ export default {
       embeddingRequired: 'RAG検索には埋め込みモデルが必要です',
       lockedTip: 'ナレッジベースに内容がある間はインデックス戦略を変更できません。先にナレッジベースを空にしてください。',
       rebuildConfirmTitle: 'インデックスを再構築',
-      rebuildConfirmBody: 'インデックス戦略が変更されました。既存の{count}件のドキュメントを再処理しますか？時間がかかる場合があります。',
-      rebuildSuccess: '{count}件のドキュメントの再構築タスクを登録しました',
+      rebuildConfirmBody: 'インデックス戦略が変更されました。既存の{count}件のファイルを再処理しますか？時間がかかる場合があります。',
+      rebuildSuccess: '{count}件のファイルの再構築タスクを登録しました',
       rebuildSkip: '再構築は後からデータソース画面で手動で実行できます'
     },
     wikiBrowser: {
@@ -3282,7 +3291,7 @@ export default {
       viewInGraph: 'グラフで表示',
       editingBadge: '編集中',
       pageActions: 'ページ操作',
-      tabDocuments: 'ドキュメント',
+      tabDocuments: 'ファイル',
       tabGraph: 'グラフ',
       tabGraphTip: 'Wikiページ間のリンクを表したグラフ（ページリンクグラフ）です。「ナレッジベース設定 → ナレッジグラフ」で設定する、LLMが抽出するエンティティ・リレーションのナレッジグラフとは異なります。',
       searchPlaceholder: 'Wikiページを検索...',
@@ -3320,20 +3329,20 @@ export default {
       filterComparison: '比較',
       legendFamiliar: 'よく使う資料',
       emptyTitle: 'Wikiページはまだありません',
-      emptyDesc: 'Wikiを有効にしてドキュメントをアップロードすると、ナレッジページが自動生成されます',
+      emptyDesc: 'Wikiを有効にしてファイルをアップロードすると、ナレッジページが自動生成されます',
       selectPageHint: '左側からページを選択すると内容が表示されます',
       version: 'v{ver}',
       aliases: '別名',
       linkedFrom: 'リンク元',
-      sources: '出典ドキュメント',
+      sources: '出典ファイル',
       graphEmpty: 'グラフを読み込み中...',
       fitView: '全体表示',
       indexTitle: 'インデックス',
       loading: '読み込み中…',
       loadMoreShort: 'さらに読み込む',
       indexOverviewTag: 'ディレクトリ',
-      indexEmpty: 'Wikiページはまだありません。先にドキュメントをアップロードしてください。',
-      graphNoData: 'グラフのデータがまだありません。先にドキュメントをアップロードしてください。（この表示はWikiページ間のリンクを示すもので、「ナレッジベース設定 → ナレッジグラフ」で設定するエンティティ・リレーションのグラフとは異なります。）',
+      indexEmpty: 'Wikiページはまだありません。先にファイルをアップロードしてください。',
+      graphNoData: 'グラフのデータがまだありません。先にファイルをアップロードしてください。（この表示はWikiページ間のリンクを示すもので、「ナレッジベース設定 → ナレッジグラフ」で設定するエンティティ・リレーションのグラフとは異なります。）',
       showArrows: '矢印を表示',
       hideArrows: '矢印を非表示',
       expandNeighbors: '隣接ノードを展開',
@@ -3427,8 +3436,8 @@ export default {
       storageChangeConfirm: 'このナレッジベースには既にファイルがあります。ストレージエンジンを変更すると、既存のファイルにアクセスできなくなる可能性があります。続行しますか？'
     },
     document: {
-      title: 'ドキュメント管理',
-      subtitle: 'クリックまたはドラッグ＆ドロップでドキュメントをアップロードします。さまざまな形式を自動で解析し、インテリジェントにチャンク分割して検索可能なナレッジベースを構築します'
+      title: 'ファイル管理',
+      subtitle: 'クリックまたはドラッグ＆ドロップでファイルをアップロードします。さまざまな形式を自動で解析し、インテリジェントにチャンク分割して検索可能なナレッジベースを構築します'
     },
     faq: {
       title: 'FAQ設定',
@@ -3544,9 +3553,9 @@ export default {
     },
     chunking: {
       title: 'チャンク設定',
-      description: 'アップロードしたドキュメントを埋め込み前にどう分割するかを制御します。ほとんどの場合はデフォルトのままで問題ありません。検索品質が低い場合のみ調整してください。',
+      description: 'アップロードしたファイルを埋め込み前にどう分割するかを制御します。ほとんどの場合はデフォルトのままで問題ありません。検索品質が低い場合のみ調整してください。',
       sizeLabel: 'チャンクサイズ',
-      sizeDescription: '1チャンクあたりの最大文字数（100〜4000）。デフォルトの512は英語で約100〜130トークンです。FAQは小さめ（200〜400）、説明文中心のドキュメントは大きめ（1000〜2000）にします。',
+      sizeDescription: '1チャンクあたりの最大文字数（100〜4000）。デフォルトの512は英語で約100〜130トークンです。FAQは小さめ（200〜400）、説明文中心のファイルは大きめ（1000〜2000）にします。',
       characters: '文字',
       overlapLabel: 'チャンクの重なり',
       overlapDescription: '隣接するチャンク間で共有する文字数（0〜500）。デフォルトの80はサイズの約15%で、現在の研究では最適とされています。FAQや構造化データは0、長文の説明文は150〜200を使用します。',
@@ -3564,18 +3573,18 @@ export default {
         space: 'スペース( )'
       },
       parentChildLabel: '親子チャンク分割',
-      parentChildDescription: '2階層のチャンク分割です。小さな子チャンクでベクトル一致を行い（高精度なヒット）、LLMには大きな親チャンクを返します（豊富なコンテキスト）。長文ドキュメント（10ページ超）に推奨です。短いFAQではストレージ節約のためオフにするとよいでしょう。',
+      parentChildDescription: '2階層のチャンク分割です。小さな子チャンクでベクトル一致を行い（高精度なヒット）、LLMには大きな親チャンクを返します（豊富なコンテキスト）。長文ファイル（10ページ超）に推奨です。短いFAQではストレージ節約のためオフにするとよいでしょう。',
       parentChunkSizeLabel: '親チャンクのサイズ',
       parentChunkSizeDescription: 'LLMに返すコンテキストチャンクのサイズ（512〜8192）。デフォルトの4096は英語で約1000トークンで、最近のLLMのコンテキストウィンドウに十分収まります。',
       childChunkSizeLabel: '子チャンクのサイズ',
       childChunkSizeDescription: 'ベクトル一致に使う埋め込み対象チャンクのサイズ（64〜2048）。デフォルトの384は約80トークンで、sentence-transformerやBGE系の埋め込みモデルに最適です。',
       strategyLabel: 'チャンク分割戦略',
-      strategyDescription: 'ドキュメントをチャンクに分割する方法を選択します。自動モードはドキュメントごとに特性を分析し、最適な戦略を選びます。',
+      strategyDescription: 'ファイルをチャンクに分割する方法を選択します。自動モードはファイルごとに特性を分析し、最適な戦略を選びます。',
       strategyPlaceholder: 'チャンク分割戦略を選択（空欄の場合は文字数で分割）',
       strategies: {
         auto: {
           label: '自動',
-          tooltip: 'ドキュメントの特性分析により、アップロードごとに見出しベース・構造ベース・文字数ベースの分割を選び分けます。'
+          tooltip: 'ファイルの特性分析により、アップロードごとに見出しベース・構造ベース・文字数ベースの分割を選び分けます。'
         },
         heading: {
           label: '見出しベース',
@@ -3609,7 +3618,7 @@ export default {
         samplePlaceholder: 'Markdownまたはプレーンテキストの断片を貼り付けると、現在の設定でどう分割されるか確認できます…',
         presetLabel: 'サンプルを読み込む:',
         samples: {
-          markdown: 'Markdownドキュメント',
+          markdown: 'Markdownファイル',
           faq: 'FAQリスト',
           chapter: 'PDFの章',
           plain: 'プレーンな文章'
@@ -3656,16 +3665,16 @@ export default {
       description: '質問生成やその他の高度な機能を設定します',
       questionGeneration: {
         label: 'AI質問生成',
-        description: 'ドキュメント解析時にLLMで各チャンクの関連質問を生成し、検索のリコールを向上させます。有効にするとドキュメントの解析時間が長くなります。',
+        description: 'ファイル解析時にLLMで各チャンクの関連質問を生成し、検索のリコールを向上させます。有効にするとファイルの解析時間が長くなります。',
         countLabel: '質問数',
-        countDescription: 'ドキュメントのチャンクごとに生成する質問の数（1〜10）',
+        countDescription: 'ファイルのチャンクごとに生成する質問の数（1〜10）',
         instructionsLabel: '質問生成の指示',
         instructionsDescription: '出力形式はシステム側で固定したまま、対象読者、利用シーン、表現を指定できます',
         instructionsPlaceholder: '例: カスタマーサポートで自然に出てくる質問を生成し、試験問題のような表現は避ける…'
       },
       profile: {
         label: 'ナレッジベース説明の自動生成',
-        description: 'ドキュメントの追加・削除・要約更新後に、ドキュメントプロファイルの集計から説明を自動生成します。集計自体はモデルを呼び出さず、集計結果が変化したときのみ小さなモデル呼び出しを1回行います。',
+        description: 'ファイルの追加・削除・要約更新後に、ファイルプロファイルの集計から説明を自動生成します。集計自体はモデルを呼び出さず、集計結果が変化したときのみ小さなモデル呼び出しを1回行います。',
         modelLabel: '生成モデル',
         modelDescription: '空欄の場合はナレッジベースの要約モデルを使用します。',
         modelPlaceholder: '生成モデルを選択',
@@ -3679,10 +3688,10 @@ export default {
         modelLabel: '分類モデル',
         modelDescription: '空欄の場合はナレッジベースの要約モデルを使用します。',
         modelPlaceholder: '分類モデルを選択',
-        maxTagsLabel: 'ドキュメントあたりの最大タグ数',
-        maxTagsDescription: 'ドキュメントごとに既存タグを1〜10件、自動で関連付けます。',
-        skipIfTaggedLabel: '既にタグが付いたドキュメントをスキップ',
-        skipIfTaggedDescription: '有効にすると、アップロード時に手動でタグ付けしたドキュメントはそのまま維持され、意図した分類が薄まりません。'
+        maxTagsLabel: 'ファイルあたりの最大タグ数',
+        maxTagsDescription: 'ファイルごとに既存タグを1〜10件、自動で関連付けます。',
+        skipIfTaggedLabel: '既にタグが付いたファイルをスキップ',
+        skipIfTaggedDescription: '有効にすると、アップロード時に手動でタグ付けしたファイルはそのまま維持され、意図した分類が薄まりません。'
       },
       tableMetadataInstructions: {
         label: 'テーブルメタデータの指示',
@@ -3696,8 +3705,8 @@ export default {
         vllmDescription: 'マルチモーダル理解に必要な視覚言語モデル',
         vllmPlaceholder: 'VLLMモデルを選択（必須）',
         descriptionLanguageLabel: '画像説明の言語',
-        descriptionLanguageDescription: '空欄にすると中国語を強制せず、ドキュメントの言語に従います',
-        descriptionLanguageAuto: 'ドキュメントの言語に従う',
+        descriptionLanguageDescription: '空欄にすると中国語を強制せず、ファイルの言語に従います',
+        descriptionLanguageAuto: 'ファイルの言語に従う',
         customInstructionsLabel: '画像処理の指示',
         customInstructionsDescription: 'OCRとMarkdown出力の仕様は固定したまま、視覚的に優先する対象を追加できます',
         customInstructionsPlaceholder: '例: 銘板、型番、アラームコード、表の単位を優先する…'
@@ -5739,6 +5748,8 @@ export default {
     }
   },
   preview: {
+    imagePrevious: '前の画像',
+    imageNext: '次の画像',
     tab: 'プレビュー',
     loading: 'ドキュメントのプレビューを読み込み中...',
     loadFailed: 'ドキュメントのプレビューの読み込みに失敗しました',
@@ -6602,11 +6613,6 @@ export default {
     guideStep3_notion: '作成したIntegrationアプリを検索して選択し、戻って「再試行」をクリックします',
     permissionDocLink: 'FeishuのWiki権限ドキュメントを見る',
     syncScheduleLabel: '同期スケジュール',
-    conflictLabel: '競合時の処理',
-    conflict: {
-      overwrite: '上書き',
-      skip: '既存をスキップ'
-    },
     syncDeletions: '削除を同期（同期元で削除されたナレッジをナレッジベースからも削除）',
     createAndSync: '作成して今すぐ同期',
     createAndSyncSuccess: 'データソースを作成し、同期タスクを送信しました',
@@ -6648,6 +6654,8 @@ export default {
       docsFailedSummary: '{n}件のドキュメントの同期に失敗しました'
     },
     connector: {
+      tencent_docs: 'Tencent Docs',
+      mockplus: 'Mockplus',
       feishu: 'Feishu',
       lark: 'Lark',
       feishu_drive: 'Feishu Drive',
@@ -6660,7 +6668,27 @@ export default {
       ima: 'Tencent IMA',
       gitlab: 'GitLab'
     },
+    siteLabel: 'Tencent Docs edition',
+    sitePersonal: 'Personal (docs.qq.com)',
+    siteSaaS: 'Enterprise (saas.docs.qq.com)',
+    selectFolderRequired: 'Select at least one folder or file',
+    mockplus: {
+      team: 'Team',
+      selectTeamRequired: 'Select a team',
+      teamDiscoveryFallback: 'Could not fetch teams. Enter the team ID.',
+
+      username: 'Account / email',
+      password: 'Password',
+      connectionRequired: 'Enter the service URL',
+
+      serviceUrl: 'Service URL',
+      teamId: 'Team ID',
+      selfSigned: 'Allow private self-signed certificate',
+      multimodalRequired: 'Image search and Q&A require multimodal processing in the knowledge base.',
+    },
     connectorDesc: {
+      tencent_docs: 'Sync selected files or readable documents in selected folders',
+      mockplus: 'Sync current project board images',
       feishu: 'Feishu Wikiからドキュメント、スプレッドシート、ファイルを同期します',
       lark: 'Lark Wiki（Feishu国際版）からドキュメント、スプレッドシート、ファイルを同期します',
       feishu_drive: 'Feishu Driveのフォルダからドキュメント、スプレッドシート、ファイルを同期します',
@@ -6795,6 +6823,16 @@ export default {
     hoursAgo: '{n}時間前',
     daysAgo: '{n}日前',
     syncError: {
+      tencent_docs_archive_unsupported: 'Archives are not supported yet',
+      tencent_docs_empty_document: 'Empty document skipped',
+      tencent_docs_unsupported_format: 'Export format is not supported',
+      tencent_docs_permission_denied: 'Export or download permission denied',
+      tencent_docs_export_failed: 'Export failed; retry later',
+      tencent_docs_export_service_error: 'Tencent export service error ({code})',
+      tencent_docs_file_too_large: 'File exceeds the current {code} MB size limit',
+      tencent_docs_download_failed: 'File download failed',
+      tencent_docs_invalid_file: 'Downloaded file format is invalid or mismatched',
+      tencent_docs_metadata_unavailable: 'File information unavailable',
       dingtalk_document_failed: 'DingTalkドキュメントを読み取れません。アクセス権限を確認して同期を再試行してください。',
       dingtalk_resource_failed: 'DingTalkリソースを利用できません。アクセス権限と選択したリソースを確認して再試行してください。',
       deletion_lookup_failed: '削除前の項目の照会に失敗しました。サーバログを確認してください',

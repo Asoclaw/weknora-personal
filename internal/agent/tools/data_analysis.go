@@ -537,8 +537,12 @@ func (t *DataAnalysisTool) LoadFromExcel(ctx context.Context, filename string, t
 		createTableSQL := buildExcelCreateTableSQL(tableName, filename, sheetNames)
 
 		if _, err := t.db.ExecContext(ctx, createTableSQL); err != nil {
-			logger.Errorf(ctx, "[Tool][DataAnalysis] Failed to create table from Excel (sheets=%v): %v", sheetNames, err)
-			return nil, fmt.Errorf("failed to create table from Excel file (sheets=%v): %w", sheetNames, err)
+			if !strings.Contains(strings.ToLower(err.Error()), "styles.xml") && !strings.Contains(strings.ToLower(err.Error()), "invalid xf") {
+				return nil, fmt.Errorf("failed to create table from Excel file (sheets=%v): %w", sheetNames, err)
+			}
+			if fallbackErr := loadExcelWithoutStyles(ctx, t.db, tableName, filename); fallbackErr != nil {
+				return nil, fmt.Errorf("Excel styles unavailable and raw-cell fallback failed: %w", fallbackErr)
+			}
 		}
 
 		logger.Infof(ctx,

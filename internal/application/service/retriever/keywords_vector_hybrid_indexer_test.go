@@ -2,13 +2,63 @@ package retriever
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/Tencent/WeKnora/internal/models/embedding"
 	"github.com/Tencent/WeKnora/internal/types"
 	"github.com/Tencent/WeKnora/internal/types/interfaces"
 )
+
+type windowEmbedder struct {
+	capturingEmbedder
+	sizes []int
+}
+
+func (e *windowEmbedder) BatchEmbedWithPool(ctx context.Context, model embedding.Embedder, texts []string) ([][]float32, error) {
+	e.sizes = append(e.sizes, len(texts))
+	return e.capturingEmbedder.BatchEmbedWithPool(ctx, model, texts)
+}
+
+type windowRepository struct {
+	saveOnlyRepository
+	mu   sync.Mutex
+	seen map[string]int
+}
+
+func (r *windowRepository) BatchSave(ctx context.Context, rows []*types.IndexInfo, params map[string]any) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, row := range rows {
+		r.seen[row.SourceID]++
+	}
+	return nil
+}
+func TestBatchIndexWindowsKeepEverySourceIdentity(t *testing.T) {
+	e := &windowEmbedder{}
+	r := &windowRepository{seen: map[string]int{}}
+	s := &KeywordsVectorHybridRetrieveEngineService{indexRepository: r}
+	rows := make([]*types.IndexInfo, 300)
+	for i := range rows {
+		rows[i] = &types.IndexInfo{SourceID: fmt.Sprint(i), Content: "content"}
+	}
+	if err := s.BatchIndex(context.Background(), e, rows, []types.RetrieverType{types.VectorRetrieverType}); err != nil {
+		t.Fatal(err)
+	}
+	if fmt.Sprint(e.sizes) != "[128 128 44]" {
+		t.Fatalf("unbounded vector windows: %v", e.sizes)
+	}
+	if len(r.seen) != 300 {
+		t.Fatal("some source IDs lost")
+	}
+	for _, count := range r.seen {
+		if count != 1 {
+			t.Fatal("source indexed twice")
+		}
+	}
+}
 
 type capturingEmbedder struct {
 	embedding.Embedder

@@ -19,3 +19,14 @@ func TestConnectorRegistryIncludesDingTalk(t *testing.T) {
 		t.Fatalf("connector.Type() = %q", connector.Type())
 	}
 }
+
+func TestConnectorRegistryIncludesMockplus(t *testing.T) {
+	registry, err := initConnectorRegistry()
+	if err != nil {
+		t.Fatal(err)
+	}
+	connector, err := registry.Get(types.ConnectorTypeMockplus)
+	if err != nil || connector.Type() != types.ConnectorTypeMockplus {
+		t.Fatalf("Mockplus not registered: %v", err)
+	}
+}

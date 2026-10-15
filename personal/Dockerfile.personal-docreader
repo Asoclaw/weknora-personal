@@ -1,0 +1,2 @@
+FROM wechatopenai/weknora-docreader:v0.8.2
+COPY docreader/parser/pptx_media.py /app/docreader/parser/pptx_media.py

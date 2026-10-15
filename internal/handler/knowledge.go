@@ -974,7 +974,8 @@ func buildSpanTree(knowledgeID string, attempt int, rows []types.KnowledgeProces
 // @Param        page_size  query     int     false  "每页数量"
 // @Param        tag_ids       query     string  false  "标签ID筛选，逗号分隔（OR语义）"
 // @Param        keyword       query     string  false  "关键词搜索"
-// @Param        file_type     query     string  false  "文件类型筛选"
+// @Param        file_type     query     string  false  "文件类型筛选；image 为独立图片资料集合"
+// @Param        file_types    query     string  false  "多个具体文件扩展名，逗号分隔，任意一个匹配；与 file_type 及其他条件取交集"
 // @Param        parse_status  query     string  false  "解析状态筛选 (pending/processing/completed/failed)"
 // @Param        source        query     string  false  "来源/渠道筛选 (web/api/feishu/notion/yuque/wechat/...，或 manual/url 按 type 过滤)"
 // @Param        start_time    query     string  false  "更新时间起点，RFC3339 格式"
@@ -1015,6 +1016,7 @@ func (h *KnowledgeHandler) ListKnowledge(c *gin.Context) {
 		TagIDs:      parseCommaSeparatedTagIDs(c.Query("tag_ids")),
 		Keyword:     c.Query("keyword"),
 		FileType:    c.Query("file_type"),
+		FileTypes:   types.NormalizeKnowledgeFileTypes(strings.Split(c.Query("file_types"), ",")),
 		ParseStatus: c.Query("parse_status"),
 		Source:      c.Query("source"),
 		SortBy: types.KnowledgeListSortField(
@@ -1023,6 +1025,12 @@ func (h *KnowledgeHandler) ListKnowledge(c *gin.Context) {
 		SortOrder: types.KnowledgeListSortOrder(
 			c.DefaultQuery("sort_order", string(types.KnowledgeListSortDescending)),
 		),
+	}
+	filter.DataSourceID = strings.TrimSpace(c.Query("datasource_id"))
+	filter.Unassigned = c.Query("unassigned") == "true"
+	if filter.DataSourceID != "" && filter.Unassigned {
+		c.Error(errors.NewBadRequestError("datasource_id and unassigned cannot be combined"))
+		return
 	}
 	if !filter.SortBy.Valid() {
 		_ = c.Error(errors.NewBadRequestError("invalid sort_by: must be updated_at, created_at, or file_name"))
@@ -1223,8 +1231,10 @@ func (h *KnowledgeHandler) MoveKnowledgeToFolder(c *gin.Context) {
 // RenameKnowledgeFolderRequest is the body schema for
 // PUT /knowledge-bases/:id/knowledge/folders.
 type RenameKnowledgeFolderRequest struct {
-	From string `json:"from" binding:"required"`
-	To   string `json:"to"   binding:"required"`
+	DataSourceID string `json:"datasource_id"`
+	Unassigned   bool   `json:"unassigned"`
+	From         string `json:"from" binding:"required"`
+	To           string `json:"to"   binding:"required"`
 }
 
 // RenameKnowledgeFolder godoc
@@ -1265,6 +1275,11 @@ func (h *KnowledgeHandler) RenameKnowledgeFolder(c *gin.Context) {
 	}
 	ctx = types.WithExecutionTenant(c.Request.Context(), effectiveTenantID)
 
+	if req.DataSourceID != "" && req.Unassigned {
+		c.Error(errors.NewBadRequestError("datasource_id and unassigned cannot be combined"))
+		return
+	}
+	ctx = types.WithKnowledgeSourceScope(ctx, types.KnowledgeSourceScope{DataSourceID: req.DataSourceID, Unassigned: req.Unassigned})
 	affected, err := h.kgService.RenameKnowledgeFolder(ctx, kbID, req.From, req.To)
 	if err != nil {
 		if appErr, ok := errors.IsAppError(err); ok {

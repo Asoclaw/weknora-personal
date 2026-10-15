@@ -7,8 +7,11 @@ export function buildListKnowledgeFilesQuery(params: ListKnowledgeFilesParams): 
   if (params.tag_ids) query.append('tag_ids', params.tag_ids);
   if (params.keyword) query.append('keyword', params.keyword);
   if (params.file_type) query.append('file_type', params.file_type);
+  if (params.file_types?.length) query.append('file_types', params.file_types.join(','));
   if (params.parse_status) query.append('parse_status', params.parse_status);
   if (params.source) query.append('source', params.source);
+  if (params.datasource_id) query.append('datasource_id', params.datasource_id);
+  if (params.unassigned) query.append('unassigned', 'true');
   if (params.start_time) query.append('start_time', params.start_time);
   if (params.end_time) query.append('end_time', params.end_time);
   if (params.sort_by) query.append('sort_by', params.sort_by);

@@ -882,7 +882,6 @@ export default {
     guideStep3_notion: 'Integration 앱을 검색하여 선택한 후, 돌아와서 다시 시도를 클릭하세요',
     permissionDocLink: '페이슈 위키 권한 설정 문서 보기',
     syncScheduleLabel: '동기화 주기',
-    conflictLabel: '충돌 전략',
     syncDeletions: '삭제 동기화 (소스에서 삭제 시 지식베이스에서도 삭제)',
     createAndSync: '생성 후 즉시 동기화',
     createAndSyncSuccess: '데이터 소스가 생성되었으며 동기화 작업이 제출되었습니다',
@@ -1000,7 +999,27 @@ export default {
       authHeaders: '사용자 지정 헤더 (선택)',
       authHeadersHint: '비공개 피드 접근용. 한 줄에 하나씩 「이름: 값」 형식으로 입력하세요. 예: Authorization: Bearer xxxx'
     },
+    siteLabel: 'Tencent Docs edition',
+    sitePersonal: 'Personal (docs.qq.com)',
+    siteSaaS: 'Enterprise (saas.docs.qq.com)',
+    selectFolderRequired: 'Select at least one folder or file',
+    mockplus: {
+      team: 'Team',
+      selectTeamRequired: 'Select a team',
+      teamDiscoveryFallback: 'Could not fetch teams. Enter the team ID.',
+
+      username: 'Account / email',
+      password: 'Password',
+      connectionRequired: 'Enter the service URL',
+
+      serviceUrl: 'Service URL',
+      teamId: 'Team ID',
+      selfSigned: 'Allow private self-signed certificate',
+      multimodalRequired: 'Image search and Q&A require multimodal processing in the knowledge base.',
+    },
     connectorDesc: {
+      tencent_docs: 'Sync selected files or readable documents in selected folders',
+      mockplus: 'Sync current project board images',
       feishu: '페이슈 위키에서 문서, 스프레드시트, 파일 동기화',
       lark: 'Lark 위키에서 문서, 스프레드시트, 파일 동기화',
       feishu_drive: "페이슈 드라이브 폴더에서 문서, 스프레드시트, 파일 동기화",
@@ -1014,6 +1033,8 @@ export default {
       gitlab: 'GitLab 프로젝트의 파일 동기화'
     },
     connector: {
+      tencent_docs: 'Tencent Docs',
+      mockplus: 'Mockplus',
       feishu: '페이슈 (Feishu)',
       lark: 'Lark (Feishu 글로벌)',
       feishu_drive: "페이슈 드라이브",
@@ -1057,10 +1078,6 @@ export default {
       resources: '리소스 선택',
       strategy: '동기화 전략'
     },
-    conflict: {
-      overwrite: '덮어쓰기',
-      skip: '기존 항목 건너뛰기'
-    },
     status: {
       active: '연결됨',
       paused: '일시정지',
@@ -1084,6 +1101,16 @@ export default {
       loadNotFoundHint: "folder_token이 존재하지 않거나 삭제되었습니다. 페이슈 드라이브 폴더 URL에서 복사한 토큰이 맞는지 확인하세요.",
     },
     syncError: {
+      tencent_docs_archive_unsupported: 'Archives are not supported yet',
+      tencent_docs_empty_document: 'Empty document skipped',
+      tencent_docs_unsupported_format: 'Export format is not supported',
+      tencent_docs_permission_denied: 'Export or download permission denied',
+      tencent_docs_export_failed: 'Export failed; retry later',
+      tencent_docs_export_service_error: 'Tencent export service error ({code})',
+      tencent_docs_file_too_large: 'File exceeds the current {code} MB size limit',
+      tencent_docs_download_failed: 'File download failed',
+      tencent_docs_invalid_file: 'Downloaded file format is invalid or mismatched',
+      tencent_docs_metadata_unavailable: 'File information unavailable',
       dingtalk_document_failed: 'DingTalk 문서를 읽을 수 없습니다. 접근 권한을 확인하고 동기화를 다시 시도하세요.',
       dingtalk_resource_failed: 'DingTalk 리소스를 사용할 수 없습니다. 접근 권한과 선택한 리소스를 확인한 후 다시 시도하세요.',
       deletion_lookup_failed: '삭제 전 항목 조회에 실패했습니다. 서버 로그를 확인하세요',
@@ -1877,6 +1904,8 @@ export default {
     }
   },
   preview: {
+    imagePrevious: '이전 이미지',
+    imageNext: '다음 이미지',
     tab: '미리보기',
     loading: '문서 미리보기 로딩 중...',
     loadFailed: '문서 미리보기 로드 실패',
@@ -3938,8 +3967,8 @@ export default {
         vllmDescription: '멀티모달 이해를 위한 비전 언어 모델 (필수)',
         vllmPlaceholder: 'VLLM 모델을 선택해주세요 (필수)',
         descriptionLanguageLabel: '이미지 설명 언어',
-        descriptionLanguageDescription: '비워 두면 문서 언어를 따릅니다',
-        descriptionLanguageAuto: '문서 언어 자동 사용',
+        descriptionLanguageDescription: '비워 두면 파일 언어를 따릅니다',
+        descriptionLanguageAuto: '파일 언어 자동 사용',
         customInstructionsLabel: '이미지 처리 지침',
         customInstructionsDescription: 'OCR 및 Markdown 형식은 유지하면서 시각적 우선순위를 추가합니다',
         customInstructionsPlaceholder: '예: 명판, 모델 번호, 경고 코드 및 표 단위를 중점적으로 인식…'
@@ -3951,16 +3980,16 @@ export default {
       },
       questionGeneration: {
         label: 'AI 질문 생성',
-        description: '문서 파싱 시 대규모 모델을 호출하여 각 청크에 대한 관련 질문을 생성하여 검색 재현율을 향상시킵니다. 활성화하면 문서 파싱 시간이 증가합니다.',
+        description: '파일 파싱 시 대규모 모델을 호출하여 각 청크에 대한 관련 질문을 생성하여 검색 재현율을 향상시킵니다. 활성화하면 파일 파싱 시간이 증가합니다.',
         countLabel: '생성 질문 수',
-        countDescription: '각 문서 청크에서 생성할 질문 수 (1-10)',
+        countDescription: '각 파일 청크에서 생성할 질문 수 (1-10)',
     instructionsLabel: '질문 생성 지침',
         instructionsDescription: '안정적인 출력 형식을 유지하면서 대상, 상황 및 표현 방식을 지정합니다',
         instructionsPlaceholder: '예: 시험 문제 형식을 피하고 자연스러운 고객 지원 질문을 생성…'
       },
       profile: {
         label: '지식베이스 설명 자동 생성',
-        description: '문서 추가·삭제·요약 갱신 후 문서 프로필 집계에서 설명을 자동 생성합니다. 집계 자체는 모델을 호출하지 않으며, 집계 결과가 바뀔 때만 작은 모델 호출을 한 번 수행합니다.',
+        description: '파일 추가·삭제·요약 갱신 후 파일 프로필 집계에서 설명을 자동 생성합니다. 집계 자체는 모델을 호출하지 않으며, 집계 결과가 바뀔 때만 작은 모델 호출을 한 번 수행합니다.',
         modelLabel: '생성 모델',
         modelDescription: '비워 두면 지식베이스 요약 모델을 사용합니다.',
         modelPlaceholder: '생성 모델 선택',
@@ -3970,14 +3999,14 @@ export default {
       },
       autoTag: {
         label: '자동 태그 연결',
-        description: '문서 파싱 후 현재 지식베이스의 기존 태그 중 적합한 태그를 연결합니다. 태그를 생성하거나 삭제하지 않으며 모델 호출이 한 번 추가됩니다.',
+        description: '파일 파싱 후 현재 지식베이스의 기존 태그 중 적합한 태그를 연결합니다. 태그를 생성하거나 삭제하지 않으며 모델 호출이 한 번 추가됩니다.',
         modelLabel: '분류 모델',
         modelDescription: '비워 두면 지식베이스 요약 모델을 사용합니다.',
         modelPlaceholder: '분류 모델 선택',
-        maxTagsLabel: '문서당 최대 태그 수',
-        maxTagsDescription: '문서마다 기존 태그 1-10개를 자동 연결합니다.',
-        skipIfTaggedLabel: '태그가 있는 문서 건너뛰기',
-        skipIfTaggedDescription: '활성화하면 업로드 시 수동으로 태그를 지정한 문서에는 자동 태그를 추가하지 않아 사용자의 분류 의도를 유지합니다.'
+        maxTagsLabel: '파일당 최대 태그 수',
+        maxTagsDescription: '파일마다 기존 태그 1-10개를 자동 연결합니다.',
+        skipIfTaggedLabel: '태그가 있는 파일 건너뛰기',
+        skipIfTaggedDescription: '활성화하면 업로드 시 수동으로 태그를 지정한 파일에는 자동 태그를 추가하지 않아 사용자의 분류 의도를 유지합니다.'
       }
     },
     asr: {
@@ -3998,9 +4027,9 @@ export default {
     },
     chunking: {
       title: '청크 설정',
-      description: '업로드된 문서가 임베딩되기 전에 분할되는 방식을 제어합니다. 대부분의 경우 기본값으로 충분합니다.',
+      description: '업로드된 파일가 임베딩되기 전에 분할되는 방식을 제어합니다. 대부분의 경우 기본값으로 충분합니다.',
       sizeLabel: '청크 크기',
-      sizeDescription: '청크당 최대 문자 수 (100-4000). 기본값 512 ≈ 영어 100-130 토큰. FAQ는 200-400, 서술형 문서는 1000-2000.',
+      sizeDescription: '청크당 최대 문자 수 (100-4000). 기본값 512 ≈ 영어 100-130 토큰. FAQ는 200-400, 서술형 파일는 1000-2000.',
       characters: '문자',
       overlapLabel: '청크 중복',
       overlapDescription: '인접 청크 간 공유 문자 수 (0-500). 기본값 80 ≈ 청크 크기의 15% — 현재 연구 권장값. FAQ/구조화 데이터는 0, 긴 서술은 150-200.',
@@ -4008,13 +4037,13 @@ export default {
       separatorsDescription: '분할 시 우선적으로 사용되는 문자/문자열. 우선순위가 높은 구분자를 먼저 시도; 기본 순서는 단락 → 문장 → 구두점.',
       separatorsPlaceholder: '구분자 선택 또는 사용자 정의',
       parentChildLabel: '부모-자식 청킹',
-      parentChildDescription: '2단계 청킹: 작은 자식 청크는 벡터 매칭(정확한 히트), 큰 부모 청크는 LLM에 반환(풍부한 컨텍스트). 긴 문서(>10페이지)에 권장; 짧은 FAQ는 비활성화하여 저장 공간 절약.',
+      parentChildDescription: '2단계 청킹: 작은 자식 청크는 벡터 매칭(정확한 히트), 큰 부모 청크는 LLM에 반환(풍부한 컨텍스트). 긴 파일(>10페이지)에 권장; 짧은 FAQ는 비활성화하여 저장 공간 절약.',
       parentChunkSizeLabel: '부모 청크 크기',
       parentChunkSizeDescription: 'LLM에 반환되는 컨텍스트 청크 크기 (512-8192). 기본값 4096 ≈ 1000 영어 토큰, 모든 현대 LLM 컨텍스트에 적합.',
       childChunkSizeLabel: '자식 청크 크기',
       childChunkSizeDescription: '벡터 매칭에 사용되는 임베딩 청크 크기 (64-2048). 기본값 384 ≈ 80 토큰 — sentence-transformer / BGE 임베더의 최적점.',
       strategyLabel: '청킹 전략',
-      strategyDescription: '문서를 청크로 분할하는 방법을 선택합니다. 자동 모드는 문서를 프로파일링하여 최적의 전략을 선택합니다.',
+      strategyDescription: '파일를 청크로 분할하는 방법을 선택합니다. 자동 모드는 파일를 프로파일링하여 최적의 전략을 선택합니다.',
       strategyPlaceholder: '청킹 전략 선택 (비워 두면 길이로 분할)',
       overlapWarning: '오버랩이 청크 크기에 비해 큽니다 — 청크가 대부분의 콘텐츠를 공유합니다.',
       advancedLabel: '고급 옵션',
@@ -4049,7 +4078,7 @@ export default {
           languages: '언어'
         },
         samples: {
-          markdown: 'Markdown 문서',
+          markdown: 'Markdown 파일',
           faq: 'FAQ 목록',
           chapter: 'PDF 챕터',
           plain: '일반 텍스트'
@@ -4071,11 +4100,11 @@ export default {
         },
         heading: {
           label: '헤딩 기준',
-          tooltip: 'Markdown 헤딩(#, ##, ###) 경계에서 분할하며 각 청크에 헤딩 경로가 부착됩니다. 잘 구조화된 Markdown 문서에 적합합니다.'
+          tooltip: 'Markdown 헤딩(#, ##, ###) 경계에서 분할하며 각 청크에 헤딩 경로가 부착됩니다. 잘 구조화된 Markdown 파일에 적합합니다.'
         },
         auto: {
           label: '자동',
-          tooltip: '문서 프로파일러가 콘텐츠 구조에 따라 「헤딩 기준」, 「구조 인식」, 「길이 기준」 분할 중 하나를 자동 선택합니다.'
+          tooltip: '파일 프로파일러가 콘텐츠 구조에 따라 「헤딩 기준」, 「구조 인식」, 「길이 기준」 분할 중 하나를 자동 선택합니다.'
         }
       },
       separators: {
@@ -4202,8 +4231,8 @@ export default {
       }
     },
     document: {
-      title: '문서',
-      subtitle: '클릭 또는 드래그하여 업로드, 다양한 형식의 문서를 자동으로 파싱하고 지능적으로 청킹하여 검색 가능한 지식베이스를 빠르게 구축합니다'
+      title: '파일',
+      subtitle: '클릭 또는 드래그하여 업로드, 다양한 형식의 파일를 자동으로 파싱하고 지능적으로 청킹하여 검색 가능한 지식베이스를 빠르게 구축합니다'
     },
     messages: {
       loadModelsFailed: '모델 목록 로드 실패',
@@ -4307,7 +4336,7 @@ export default {
       viewInGraph: '그래프에서 보기',
       editingBadge: '편집 중',
       pageActions: '페이지 작업',
-      tabDocuments: '문서',
+      tabDocuments: '파일',
       tabGraph: '그래프',
       tabGraphTip: 'Wiki 페이지 간의 링크 관계 그래프(페이지 링크 그래프)입니다. \'지식 베이스 설정 → 지식 그래프\'에서 구성하는 LLM 기반 엔티티-관계 지식 그래프와는 다른 개념입니다.',
       searchPlaceholder: 'Wiki 페이지 검색...',
@@ -4345,20 +4374,20 @@ export default {
       filterComparison: '비교',
       legendFamiliar: '자주 쓰는 자료',
       emptyTitle: 'Wiki 페이지가 없습니다',
-      emptyDesc: 'Wiki를 활성화하고 문서를 업로드하면 지식 페이지가 자동 생성됩니다',
+      emptyDesc: 'Wiki를 활성화하고 파일를 업로드하면 지식 페이지가 자동 생성됩니다',
       selectPageHint: '왼쪽에서 페이지를 선택하여 내용을 확인하세요',
       version: 'v{ver}',
       aliases: '별칭',
       linkedFrom: '링크 출처',
-      sources: '원본 문서',
+      sources: '원본 파일',
       graphEmpty: '그래프 로딩 중...',
       fitView: '화면에 맞춤',
       indexTitle: '인덱스',
       loading: '로딩 중…',
       loadMoreShort: '더 보기',
       indexOverviewTag: '분류 목록',
-      indexEmpty: 'Wiki 페이지가 없습니다. 먼저 문서를 업로드하세요.',
-      graphNoData: '그래프 데이터가 없습니다. 먼저 문서를 업로드하세요. (여기는 Wiki 페이지 간의 링크 관계를 표시하며, "지식 베이스 설정 → 지식 그래프"에서 구성하는 엔티티-관계 그래프와는 다릅니다.)',
+      indexEmpty: 'Wiki 페이지가 없습니다. 먼저 파일를 업로드하세요.',
+      graphNoData: '그래프 데이터가 없습니다. 먼저 파일를 업로드하세요. (여기는 Wiki 페이지 간의 링크 관계를 표시하며, "지식 베이스 설정 → 지식 그래프"에서 구성하는 엔티티-관계 그래프와는 다릅니다.)',
       showArrows: '화살표 표시',
       hideArrows: '화살표 숨기기',
       expandNeighbors: '이웃 확장',
@@ -4417,9 +4446,9 @@ export default {
     },
     indexing: {
       title: '인덱싱 전략',
-      description: '문서 업로드 후 처리 파이프라인을 구성합니다. 각 인덱싱 방식을 독립적으로 켜거나 끌 수 있습니다',
+      description: '파일 업로드 후 처리 파이프라인을 구성합니다. 각 인덱싱 방식을 독립적으로 켜거나 끌 수 있습니다',
       searchTitle: 'RAG 검색',
-      searchDesc: '문서를 청크 분할, 벡터화, 키워드 인덱싱하여 하이브리드 검색을 지원합니다',
+      searchDesc: '파일를 청크 분할, 벡터화, 키워드 인덱싱하여 하이브리드 검색을 지원합니다',
       wikiTitle: 'Wiki 지식베이스',
       wikiDesc: '상호 연결된 Wiki 지식 페이지를 자동 생성하여 구조화된 지식 체계를 구축합니다',
       graphTitle: '지식 그래프',
@@ -4428,8 +4457,8 @@ export default {
       embeddingRequired: 'RAG 검색에는 Embedding 모델 설정이 필요합니다',
       lockedTip: '지식베이스에 콘텐츠가 있어 인덱싱 전략을 변경할 수 없습니다. 변경하려면 먼저 지식베이스를 비우세요.',
       rebuildConfirmTitle: '인덱스 재구축',
-      rebuildConfirmBody: '인덱싱 전략이 변경되었습니다. 기존 {count}개 문서를 재처리하시겠습니까? 시간이 다소 걸릴 수 있습니다.',
-      rebuildSuccess: '재구축 작업이 제출되었습니다. 총 {count}개 문서',
+      rebuildConfirmBody: '인덱싱 전략이 변경되었습니다. 기존 {count}개 파일를 재처리하시겠습니까? 시간이 다소 걸릴 수 있습니다.',
+      rebuildSuccess: '재구축 작업이 제출되었습니다. 총 {count}개 파일',
       rebuildSkip: '데이터 소스에서 나중에 수동으로 재구축할 수 있습니다'
     },
     wiki: {
@@ -4444,11 +4473,11 @@ export default {
       extractionInstructionsLabel: 'Wiki 추출 중점',
       extractionInstructionsTip: '시스템 JSON 및 인용 규칙을 바꾸지 않고 우선할 엔티티와 개념을 지정합니다.',
       extractionInstructionsPlaceholder: '예: 제품, 버전, 조직, 담당자 및 핵심 기술 개념을 우선…',
-      extractionGranularityTip: '문서당 추출되는 Wiki 엔티티/개념 수를 제어합니다. 세밀할수록 인덱스가 간결하고, 거칠수록 포괄적입니다',
+      extractionGranularityTip: '파일당 추출되는 Wiki 엔티티/개념 수를 제어합니다. 세밀할수록 인덱스가 간결하고, 거칠수록 포괄적입니다',
       granularityFocused: '집중',
       granularityStandard: '표준',
       granularityExhaustive: '상세',
-      granularityFocusedHint: '문서의 주요 주체만 추출합니다 (예: 이력서 → 인물과 프로젝트). 가장 깔끔하지만 부수 엔티티는 누락될 수 있습니다.',
+      granularityFocusedHint: '파일의 주요 주체만 추출합니다 (예: 이력서 → 인물과 프로젝트). 가장 깔끔하지만 부수 엔티티는 누락될 수 있습니다.',
       granularityStandardHint: '주요 주체 + 상세히 논의된 부수 엔티티/개념. 지나가듯 언급된 용어는 생략합니다. 권장 기본값입니다.',
       granularityExhaustiveHint: '스쳐 지나가는 기술 스택 언급을 포함해 명명된 모든 엔티티와 개념을 추출합니다. KB를 용어집으로 사용할 때 적합합니다.'
     },
@@ -4458,18 +4487,18 @@ export default {
       kbId: '지식베이스 ID',
       kbIdDesc: 'API 연동에서 이 ID로 지식베이스를 지정할 수 있습니다',
       typeLabel: '지식베이스 유형',
-      typeDocument: '문서',
+      typeDocument: '파일',
       typeFAQ: 'Q&A',
-      typeDescription: 'FAQ 유형은 구조화된 Q&A 데이터에 적합합니다. 문서 유형은 파일 파싱과 청킹을 지원합니다. Wiki 유형은 LLM을 통해 상호 연결된 지식 페이지를 자동으로 구축합니다.',
+      typeDescription: 'FAQ 유형은 구조화된 Q&A 데이터에 적합합니다. 파일 유형은 파일 파싱과 청킹을 지원합니다. Wiki 유형은 LLM을 통해 상호 연결된 지식 페이지를 자동으로 구축합니다.',
       nameLabel: '지식베이스 이름',
       namePlaceholder: '지식베이스 이름을 입력해주세요',
       descriptionLabel: '지식베이스 설명',
       descriptionPlaceholder: '지식베이스 설명을 입력해주세요 (선택)',
       profile: {
         title: 'AI 생성 설명',
-        hint: '문서 프로필 집계에서 생성됩니다. 위의 수동 설명을 덮어쓰지 않으며, 에이전트는 두 설명을 함께 읽어 질문이 이 지식베이스에 속하는지 판단합니다.',
-        empty: '아직 생성되지 않았습니다. 문서를 업로드하고 요약이 완료된 뒤 아래 버튼으로 생성하세요.',
-        noDocuments: '이 지식베이스에 파싱이 완료된 문서가 아직 없습니다.',
+        hint: '파일 프로필 집계에서 생성됩니다. 위의 수동 설명을 덮어쓰지 않으며, 에이전트는 두 설명을 함께 읽어 질문이 이 지식베이스에 속하는지 판단합니다.',
+        empty: '아직 생성되지 않았습니다. 파일를 업로드하고 요약이 완료된 뒤 아래 버튼으로 생성하세요.',
+        noDocuments: '이 지식베이스에 파싱이 완료된 파일가 아직 없습니다.',
         questions: '대표 질문',
         generate: 'AI 설명 생성',
         regenerate: '다시 생성',
@@ -4478,7 +4507,7 @@ export default {
         generateFailed: 'AI 설명 생성에 실패했습니다',
         adopted: '설명란에 복사했습니다. 저장하면 적용됩니다',
         failed: '마지막 생성 실패: {error}',
-        generatedAt: '{time} 생성 · 문서 {count}개 기준'
+        generatedAt: '{time} 생성 · 파일 {count}개 기준'
       }
     },
     errors: {
@@ -6688,19 +6717,19 @@ export default {
     }
   },
   uploadConfirm: {
-    documentSummary: "문서 요약",
-    documentSummaryDescription: "이번에 가져오는 문서의 요약을 자동으로 생성할지 선택합니다.",
-    generateSummary: "문서 요약 생성",
+    documentSummary: "파일 요약",
+    documentSummaryDescription: "이번에 가져오는 파일의 요약을 자동으로 생성할지 선택합니다.",
+    generateSummary: "파일 요약 생성",
     generateSummaryHint: "기본적으로 활성화됩니다. 비활성화하면 요약 생성을 건너뛰며 파싱, 인덱싱 및 기타 단계는 설정대로 진행됩니다.",
 
-    title: '문서 업로드 확인',
+    title: '파일 업로드 확인',
     parseConfig: '파싱 설정',
     configNav: '파싱 설정 탐색',
     navParserDefault: '기본',
     navParserCustomized: '사용자 지정',
     moreOptions: '추가 처리 옵션',
     summaryParentChildShort: '부모-자식 청킹',
-    summaryParserForceScanned: '스캔 문서 파싱',
+    summaryParserForceScanned: '스캔 파일 파싱',
     summaryQuestionCountValue: '{count}개',
     summaryGraphTagsValue: '{count}개',
     navChunkingSummary: '청크 {size}',
@@ -6711,11 +6740,11 @@ export default {
     summaryTagsCount: '태그 {count}개',
     confirm: '업로드 및 파싱 확인',
     cancel: '취소',
-    tabTags: '문서 태그',
-    tagsDescription: '이 배치로 가져오는 모든 문서에 적용할 태그를 여러 개 선택할 수 있습니다',
+    tabTags: '파일 태그',
+    tagsDescription: '이 배치로 가져오는 모든 파일에 적용할 태그를 여러 개 선택할 수 있습니다',
     tagsPlaceholder: '태그 선택(복수 선택 가능)',
     tagsEmpty: '현재 지식 베이스에 태그가 없습니다. 업로드 후 태그 관리에서 만들 수 있습니다.',
-    tagsLoadFailed: '태그를 불러오지 못했습니다. 나중에 문서 목록에서 설정할 수 있습니다.',
+    tagsLoadFailed: '태그를 불러오지 못했습니다. 나중에 파일 목록에서 설정할 수 있습니다.',
     noItems: '파일 또는 URL을 하나 이상 추가하세요',
     urlItemLabel: 'URL',
     urlAdded: 'URL이 추가되었습니다',
@@ -6739,7 +6768,7 @@ export default {
     confirmManual: '게시 및 파싱',
     titleReparse: '재파싱 확인',
     confirmReparse: '확인 후 재파싱',
-    reparseSource: '재파싱할 문서',
+    reparseSource: '재파싱할 파일',
     reparseHint: '이전 파싱 설정을 사용하며 여기서 조정할 수 있습니다',
     manualCharCount: '{count}자',
     pdfForceScanned: {
@@ -6748,8 +6777,10 @@ export default {
     }
   },
   knowledgeBase: {
+    sourceGroups: { all: 'All documents', other: 'Other documents', removed: 'Removed data source' },
+
     tagAddAction: '태그 추가',
-    documentCount: '문서 {count}개',
+    documentCount: '파일 {count}개',
     filters: '필터',
     clearFilters: '필터 지우기',
 
@@ -6776,16 +6807,17 @@ export default {
     tagUpdateSuccess: '태그 업데이트 성공',
     tagEditDialogHeading: '태그 편집',
     folderTree: {
-      totalDocuments: '전체 문서 {count}개',
-      countHint: '현재 폴더 문서 {direct}개, 하위 폴더 포함 {total}개',
-      filteredCount: '일치하는 문서 {count}개',
+      showFolders: '폴더 표시',
+      totalDocuments: '전체 파일 {count}개',
+      countHint: '직접 포함된 파일: {direct}',
+      filteredCount: '일치하는 파일 {count}개',
       title: '폴더',
       rootRow: '루트',
-      rootRowTip: '지식 베이스 루트 디렉터리, 하위 폴더에 없는 문서가 여기에 있습니다',
-      folderCardCount: '문서 {count}개',
+      rootRowTip: '지식 베이스 루트 디렉터리, 하위 폴더에 없는 파일가 여기에 있습니다',
+      folderCardCount: '파일 {count}개',
       searchingSubtree: '(하위 폴더 포함)',
-      emptyFolder: '이 폴더에는 아직 문서가 없습니다',
-      emptySearch: '일치하는 문서가 없습니다',
+      emptyFolder: '이 폴더에는 아직 파일가 없습니다',
+      emptySearch: '일치하는 파일가 없습니다',
       collapse: '폴더 접기',
       expand: '폴더 펼치기',
       collapseFolder: '이 폴더 접기',
@@ -6806,8 +6838,8 @@ export default {
       newFolderAddUnder: '「{folder}」 아래에 하위 디렉터리 만들기',
       newFolderHintRoot: '루트 아래에 생성됩니다',
       newFolderHintUnder: '「{folder}」 아래에 생성됩니다',
-      success: '문서 {count}개를 이동했습니다',
-      failed: '문서를 이동할 수 없습니다',
+      success: '파일 {count}개를 이동했습니다',
+      failed: '파일를 이동할 수 없습니다',
       duplicate: '이미 존재하는 폴더입니다',
     },
     tagFilterTitle: '태그로 필터',
@@ -6817,13 +6849,13 @@ export default {
     tagManageDescription: '지식베이스 태그 생성, 이름 변경 또는 삭제',
     tagManageLink: '태그 관리…',
     tagManageListSection: '태그 목록',
-    tagManageDocCount: '문서 {count}개',
+    tagManageDocCount: '파일 {count}개',
     tagManageFaqCount: 'FAQ {count}개',
     tagPickerSelected: '선택됨',
     tagPickerUnselected: '선택 안 됨',
     tagSelectedCount: '{count}개 선택됨',
     tagPickerSearch: "태그 검색 또는 만들기",
-    tagPickerInUse: "사용 중인 태그입니다. 먼저 문서 연결을 해제하세요.",
+    tagPickerInUse: "사용 중인 태그입니다. 먼저 파일 연결을 해제하세요.",
     tagPickerDeleteConfirm: "“{name}” 태그를 삭제할까요?",
     untagged: '태그 없음',
     tagCreateAction: '태그 생성',
@@ -6832,7 +6864,7 @@ export default {
     tagNameRequired: '태그 이름을 먼저 입력하세요',
     tagCreateSuccess: '태그 생성 성공',
     tagEditSuccess: '태그 업데이트 성공',
-    tagDeleteDescDoc: '"{name}" 태그를 삭제하시겠습니까? 해당 태그의 모든 문서가 함께 삭제됩니다',
+    tagDeleteDescDoc: '"{name}" 태그를 삭제하시겠습니까? 해당 태그의 모든 파일가 함께 삭제됩니다',
     tagDeleteSuccess: '태그가 삭제되었습니다',
     tagEditAction: '이름 변경',
     tagDeleteAction: '삭제',
@@ -6841,10 +6873,10 @@ export default {
     tagPlaceholder: '태그를 선택하세요',
     noTags: '태그 없음',
     videosFilteredNoVLM: '{count}개의 동영상 파일을 건너됨 (동영상 업로드 미지원)',
-    unsupportedTypesHint: '일부 문서 유형({types})에 사용 가능한 파서 엔진이 없어 처리할 수 없습니다',
+    unsupportedTypesHint: '일부 파일 유형({types})에 사용 가능한 파서 엔진이 없어 처리할 수 없습니다',
     goToParserSettings: '설정으로 이동',
     importURL: '웹페이지 가져오기',
-    addDocument: '문서 추가',
+    addDocument: '파일 추가',
     importURLTitle: '웹페이지 가져오기',
     urlRequired: 'URL을 입력하세요',
     invalidURL: '유효한 URL을 입력하세요',
@@ -6874,13 +6906,19 @@ export default {
     channelYuque: 'Yuque',
     channelGitLab: 'GitLab',
     channelIma: 'Tencent IMA',
+    originalSourceLink: 'Original source link',
+    openOriginalDocument: 'Open original document',
+    copySourceLink: 'Copy link',
+    copySourceLinkFailed: 'Could not copy link',
+    sourceLinkUnavailable: 'Original link unavailable',
+    channelMockplus: 'Mockplus',
     channelUpload: '업로드',
     channelManual: '수동',
     channelUrl: '웹',
     channelUnknown: '알 수 없음',
     urlSource: '원본 URL',
     webContent: '웹페이지 내용',
-    documentContent: '문서 내용',
+    documentContent: '파일 내용',
     importTime: '가져온 시간',
     createTime: '생성 시간',
     createdAt: '생성일시',
@@ -6897,7 +6935,7 @@ export default {
     confirmDeleteQuestion: '이 질문을 삭제하시겠습니까? 삭제 시 해당 벡터 인덱스도 함께 제거됩니다.',
     legacyQuestionCannotDelete: '이전 형식의 질문은 삭제할 수 없습니다. 질문을 다시 생성하세요',
     customMetadata: '사용자 정의 메타데이터',
-    metadataCapabilityHint: '문서 요약과 검색 후 문서 수준 답변 컨텍스트에 사용됩니다. 인덱스에 포함되지 않으며 검색 순위에 영향을 주지 않습니다',
+    metadataCapabilityHint: '파일 요약과 검색 후 파일 수준 답변 컨텍스트에 사용됩니다. 인덱스에 포함되지 않으며 검색 순위에 영향을 주지 않습니다',
     noCustomMetadata: '사용자 정의 메타데이터 없음',
     addMetadataField: '메타데이터 필드 추가',
     metadataKeyPlaceholder: '필드 이름',
@@ -6911,7 +6949,7 @@ export default {
     metadataNumberRequired: '메타데이터 필드 {key}에는 유효한 숫자가 필요합니다',
     regenerateSummary: '요약 다시 생성',
     generateSummary: '요약 생성',
-    noDocumentSummary: '문서 요약 없음',
+    noDocumentSummary: '파일 요약 없음',
     summaryRefreshed: '요약이 업데이트되었습니다',
     summaryRefreshQueued: '요약 새로고침이 대기열에 추가되었으며 완료되면 자동으로 업데이트됩니다',
     indexFailed: '인덱스 동기화 실패',
@@ -6949,27 +6987,27 @@ export default {
     deleteFailed: '삭제 실패, 나중에 다시 시도하세요!',
     uploadTime: '업로드 시간',
     newSession: '새 세션',
-    editDocument: '문서 편집',
+    editDocument: '파일 편집',
     rebuildDocument: '지식 재구축',
-    rebuildConfirm: '문서 "{fileName}"을(를) 재구축하시겠습니까? 기존 청크가 삭제되고 다시 파싱됩니다.',
+    rebuildConfirm: '파일 "{fileName}"을(를) 재구축하시겠습니까? 기존 청크가 삭제되고 다시 파싱됩니다.',
     rebuildSubmitted: '재구축 작업이 제출되었습니다',
     rebuildFailed: '재구축 실패, 나중에 다시 시도해주세요',
-    rebuildInProgress: '현재 문서가 파싱 중입니다. 나중에 다시 시도해주세요',
+    rebuildInProgress: '현재 파일가 파싱 중입니다. 나중에 다시 시도해주세요',
     cancelParse: '파싱 중지',
     cancelParseConfirmBody: '"{title}"의 파싱을 중지하시겠습니까? 이미 저장된 청크는 유지되며 "다시 빌드"를 통해 다시 파싱할 수 있습니다. 최적화 단계(요약 / Q&A / 지식 그래프)의 대기 중인 작업은 즉시 취소됩니다.',
     cancelParseSubmitted: '파싱이 중지되었습니다',
     cancelParseFailed: '중지에 실패했습니다. 나중에 다시 시도해주세요',
     draft: '초안',
     draftTip: '임시 저장된 내용, 검색에 포함되지 않음',
-    untitledDocument: '제목 없는 문서',
-    deleteDocument: '문서 삭제',
+    untitledDocument: '제목 없는 파일',
+    deleteDocument: '파일 삭제',
     moveDocument: '이동...',
     moveToKnowledgeBase: '지식베이스로 이동',
     moveNoTargets: '호환되는 지식베이스가 없습니다 (동일한 유형과 임베딩 모델 필요)',
     moveModeReuseVectors: '벡터 재사용 (빠름)',
     moveModeReuseVectorsDesc: '청크와 벡터 인덱스를 직접 이동합니다. 청킹 설정이 동일할 때 사용합니다.',
     moveModeReparse: '재해석',
-    moveModeReparseDesc: '대상 지식베이스의 청킹 설정으로 문서를 다시 해석합니다.',
+    moveModeReparseDesc: '대상 지식베이스의 청킹 설정으로 파일를 다시 해석합니다.',
     moveConfirm: '이동 확인',
     moveConfirmTitle: '이동 설정 확인',
     moveStarted: '이동 작업이 제출되었습니다',
@@ -6981,7 +7019,7 @@ export default {
     generatingSummary: '요약 생성 중...',
     documentSummary: '요약',
     detailSectionMeta: '기본 정보',
-    confirmDeleteDocument: '"{fileName}" 문서를 삭제하시겠습니까? 삭제 후 복구할 수 없습니다',
+    confirmDeleteDocument: '"{fileName}" 파일를 삭제하시겠습니까? 삭제 후 복구할 수 없습니다',
     confirmDelete: '삭제 확인',
     viewModeGrid: '카드 보기',
     viewModeList: '목록 보기',
@@ -6999,30 +7037,30 @@ export default {
     batchDelete: '선택 삭제',
     batchDownload: '일괄 다운로드',
     batchDownloading: '다운로드 준비 중…',
-    batchDownloadHint: '한 번에 최대 200개 문서, 원본 합계 512 MiB를 ZIP으로 다운로드합니다. 전체 선택은 불러온 문서만 포함하며, 원본이 없는 웹 페이지는 건너뜁니다. ZIP은 폴더 구조를 유지합니다.',
+    batchDownloadHint: '한 번에 최대 200개 파일, 원본 합계 512 MiB를 ZIP으로 다운로드합니다. 전체 선택은 불러온 파일만 포함하며, 원본이 없는 웹 페이지는 건너뜁니다. ZIP은 폴더 구조를 유지합니다.',
     batchDownloadStarted: 'ZIP 저장을 시작했습니다. 압축을 푼 후 파일과 폴더를 업로드하세요.',
     batchDownloadFailed: '일괄 다운로드에 실패했습니다. 다시 시도하세요.',
-    batchDownloadSkipped: '원본 파일이 없는 문서 {count}개를 건너뛰었습니다.',
-    batchDownloadNoFiles: '선택한 문서에 다운로드할 원본 파일이 없습니다.',
+    batchDownloadSkipped: '원본 파일이 없는 파일 {count}개를 건너뛰었습니다.',
+    batchDownloadNoFiles: '선택한 파일에 다운로드할 원본 파일이 없습니다.',
     batchDownloadTooLarge: '선택한 파일 합계가 512 MiB를 초과합니다. 항목을 줄인 뒤 나눠 다운로드하세요.',
-    selectLoaded: '불러온 문서 선택',
-    confirmBatchDeleteDocument: '선택한 {count}개 문서를 삭제하시겠습니까? 삭제 후 복구할 수 없습니다.',
+    selectLoaded: '불러온 파일 선택',
+    confirmBatchDeleteDocument: '선택한 {count}개 파일를 삭제하시겠습니까? 삭제 후 복구할 수 없습니다.',
     deleteSubmitted: '삭제 요청이 제출되었습니다. 완료를 기다리는 중입니다.',
     deletePending: '삭제가 아직 완료되지 않았습니다. 잠시 후 새로고침하여 결과를 확인하세요.',
-    deleteTaskFailed: '삭제에 실패했습니다. 문서의 오류 세부 정보를 확인한 후 다시 시도하세요.',
-    deleteStatusUnavailable: '삭제 결과를 확인할 수 없습니다. 잠시 후 새로고침하여 문서 상태를 확인하세요.',
-    batchDeleteSuccess: '{count}개 문서가 삭제되었습니다',
+    deleteTaskFailed: '삭제에 실패했습니다. 파일의 오류 세부 정보를 확인한 후 다시 시도하세요.',
+    deleteStatusUnavailable: '삭제 결과를 확인할 수 없습니다. 잠시 후 새로고침하여 파일 상태를 확인하세요.',
+    batchDeleteSuccess: '{count}개 파일가 삭제되었습니다',
     batchDeleteFailed: '일괄 삭제 실패',
     batchTag: '일괄 태그',
     batchTagDialogHeading: '일괄 태그 지정',
-    batchTagSubtitle: '선택한 {count}개 문서에 태그를 일괄 설정합니다 (기존 태그는 대체됩니다)',
-    batchTagSuccess: '{count}개 문서에 태그가 적용되었습니다',
+    batchTagSubtitle: '선택한 {count}개 파일에 태그를 일괄 설정합니다 (기존 태그는 대체됩니다)',
+    batchTagSuccess: '{count}개 파일에 태그가 적용되었습니다',
     batchTagFailed: '일괄 태그 실패',
-    confirmBatchReparseDocument: '선택한 {count}개 문서를 재구축하시겠습니까? 기존 내용이 삭제되고 각 문서가 다시 파싱됩니다.',
+    confirmBatchReparseDocument: '선택한 {count}개 파일를 재구축하시겠습니까? 기존 내용이 삭제되고 각 파일가 다시 파싱됩니다.',
     confirmBatchReparse: '확인 후 재파싱',
     batchReparseSuccess: '재구축 작업 {count}개가 제출되었습니다',
     batchReparseFailed: '일괄 재구축 실패',
-    batchReparseSkippedInFlight: '파싱 중인 문서 {count}개를 건너뛰었습니다',
+    batchReparseSkippedInFlight: '파싱 중인 파일 {count}개를 건너뛰었습니다',
     statusCompleted: '완료',
     statusProcessing: '처리 중',
     statusFinalizing: '최적화 중',
@@ -7039,7 +7077,7 @@ export default {
     textMarkdownFormat: 'text, markdown 형식 파일, 최대 200KB',
     dragFileNotText: '텍스트나 링크가 아닌 파일을 드래그하세요',
     searchPlaceholder: '지식베이스 검색...',
-    docSearchPlaceholder: '문서 이름 검색...',
+    docSearchPlaceholder: '파일 이름 검색...',
     fileTypeFilter: '파일 유형',
     allFileTypes: '모든 유형',
     allTags: '모든 태그',
@@ -7084,7 +7122,7 @@ export default {
       enabled: '활성화됨',
       vectorStore: '벡터 스토어',
       fileStorage: '파일 스토리지',
-      documentCount: '문서 수',
+      documentCount: '파일 수',
       faqCount: 'FAQ 수',
       supportedFileTypes: '허용 형식',
       chunking: '분할',
@@ -7096,7 +7134,7 @@ export default {
       roleOwner: '소유자',
       permissionOwner: '설정을 편집, 관리하고 지식베이스를 삭제할 수 있습니다.',
       permissionAdmin: '공유 설정 편집 및 관리',
-      permissionEditor: '편집 가능한 문서 및 태그',
+      permissionEditor: '편집 가능한 파일 및 태그',
       permissionViewer: '보기 및 검색만 가능',
       fromOrg: '공유 공간에서',
       sharedAt: '공유일시',
@@ -7143,7 +7181,7 @@ export default {
       steps: {
         done: {
           title: '이제 탐색해 보세요',
-          desc: '업로드한 문서와 관련된 질문을 해 보고, 인용이 포함된 답변을 확인해 보세요.'
+          desc: '업로드한 파일와 관련된 질문을 해 보고, 인용이 포함된 답변을 확인해 보세요.'
         },
         send: {
           title: '보내기로 대화 시작',
@@ -7163,10 +7201,10 @@ export default {
       steps: {
         done: {
           title: '분석 후 사용 가능',
-          desc: '문서가 색인되면 대화에서 {\'@\'}로 이 지식 베이스를 지정해 출처가 포함된 답변을 받을 수 있습니다.'
+          desc: '파일가 색인되면 대화에서 {\'@\'}로 이 지식 베이스를 지정해 출처가 포함된 답변을 받을 수 있습니다.'
         },
         upload: {
-          title: '문서 추가',
+          title: '파일 추가',
           desc: '여기에서 파일·폴더 업로드, URL 가져오기, 온라인 편집 콘텐츠 생성을 할 수 있습니다.'
         },
         intro: {
@@ -7191,7 +7229,7 @@ export default {
         },
         navMultimodal: {
           title: '첨부 업로드(선택)',
-          desc: '채팅에서 이미지, 문서, 오디오 등 첨부를 허용합니다. 이미지 이해에는 시스템 설정의 VLM이 필요합니다.'
+          desc: '채팅에서 이미지, 파일, 오디오 등 첨부를 허용합니다. 이미지 이해에는 시스템 설정의 VLM이 필요합니다.'
         },
         navWebsearch: {
           title: '웹 검색(선택)',
@@ -7255,7 +7293,7 @@ export default {
         },
         navMultimodal: {
           title: '멀티모달/이미지(선택)',
-          desc: '차트·스캔·이미지가 많은 문서를 시각 이해가 필요할 때 활성화하세요.'
+          desc: '차트·스캔·이미지가 많은 파일를 시각 이해가 필요할 때 활성화하세요.'
         },
         storage: {
           title: '스토리지(선택)',
@@ -7263,7 +7301,7 @@ export default {
         },
         chunking: {
           title: '청킹(선택)',
-          desc: '문서를 검색 단위로 나누는 방식입니다. RAG에 맞춘 기본값을 그대로 쓰면 됩니다.'
+          desc: '파일를 검색 단위로 나누는 방식입니다. RAG에 맞춘 기본값을 그대로 쓰면 됩니다.'
         },
         parser: {
           title: '파서 엔진(선택)',
@@ -7291,7 +7329,7 @@ export default {
         },
         type: {
           title: '유형 선택',
-          desc: '문서 라이브러리는 PDF·Word 등 파일용, FAQ 라이브러리는 질문·답변 쌍용입니다. 생성 후 유형은 변경할 수 없습니다.'
+          desc: '파일 라이브러리는 PDF·Word 등 파일용, FAQ 라이브러리는 질문·답변 쌍용입니다. 생성 후 유형은 변경할 수 없습니다.'
         }
       }
     },
@@ -7322,7 +7360,7 @@ export default {
         },
         intro: {
           title: '먼저 모델을 구성하세요',
-          desc: '문서 지식 베이스에는 대화 모델(요약·Q&A)과 Embedding 모델(벡터 검색)이 각각 하나 이상 필요합니다. 시스템 설정에서 추가하세요.'
+          desc: '파일 지식 베이스에는 대화 모델(요약·Q&A)과 Embedding 모델(벡터 검색)이 각각 하나 이상 필요합니다. 시스템 설정에서 추가하세요.'
         }
       }
     },
@@ -7330,7 +7368,7 @@ export default {
       steps: {
         create: {
           title: '첫 지식 베이스 만들기',
-          desc: '지식 베이스에 문서와 FAQ를 보관합니다. 아래에 강조된 「새 지식 베이스」 버튼을 누르면 양식 작성을 안내합니다.'
+          desc: '지식 베이스에 파일와 FAQ를 보관합니다. 아래에 강조된 「새 지식 베이스」 버튼을 누르면 양식 작성을 안내합니다.'
         }
       }
     }

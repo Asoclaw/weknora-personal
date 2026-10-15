@@ -31,6 +31,8 @@ logs/
 WeKnora
 WeKnora-lite
 WeKnora-personal
+# Locally compiled verification binaries (source changes are committed separately).
+/WeKnora-*
 /data/backups/
 /artifacts/
 /secrets/

@@ -460,6 +460,11 @@ func NewDataTableSummaryService(
 // Handle implements the TaskHandler interface for table extraction
 // 整体流程：初始化 -> 准备资源 -> 加载数据 -> 生成摘要 -> 创建索引
 func (s *DataTableSummaryService) Handle(ctx context.Context, t *asynq.Task) error {
+	release, slotErr := acquireProcessingSlot(ctx, fileProcessingSlots)
+	if slotErr != nil {
+		return slotErr
+	}
+	defer release()
 	// 1. 解析任务并初始化上下文
 	var payload DataTableSummaryPayload
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {

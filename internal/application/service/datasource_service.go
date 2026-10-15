@@ -769,7 +769,9 @@ func (s *DataSourceService) ProcessSync(ctx context.Context, task *asynq.Task) e
 	}
 
 	// Update cursor for next incremental sync
-	if nextCursor != nil {
+	// A failed Tencent Docs write must remain fetchable on the next run.
+	// Successful items can be safely replayed through the content guard below.
+	if nextCursor != nil && (ds.Type != types.ConnectorTypeTencentDocs || result.Failed == 0) {
 		cursorJSON, _ := nextCursor.ToJSON()
 		ds.LastSyncCursor = cursorJSON
 	}
@@ -939,6 +941,9 @@ func (s *DataSourceService) applyFetchedItem(
 		} else {
 			logger.Infof(ctx, "skipping item %q (external_id=%s): no content or URL", item.Title, item.ExternalID)
 			result.Skipped++
+			if reason := item.Metadata["skip_reason"]; reason != "" {
+				recordSyncError(result, types.SyncItemError{Title: item.Title, Code: item.Metadata["skip_reason_code"], Message: reason})
+			}
 		}
 		return
 	}
@@ -965,9 +970,7 @@ func (s *DataSourceService) applyFetchedItem(
 			logger.Warnf(ctx, "failed to ingest item %q (external_id=%s): %v", item.Title, item.ExternalID, err)
 			result.Failed++
 			recordSyncError(result, types.SyncItemError{
-				Title:   item.Title,
-				Code:    "ingest_failed",
-				Message: "Ingest failed; see server logs",
+				Title: item.Title, Code: "ingest_failed", Message: "Ingest failed; see server logs",
 			})
 		}
 	} else if isUpdate {
@@ -1013,6 +1016,20 @@ func (h *streamSyncHandler) Emit(ctx context.Context, item types.FetchedItem) er
 	return nil
 }
 
+func (h *streamSyncHandler) EmitAcknowledged(ctx context.Context, item types.FetchedItem) (bool, error) {
+	failed := h.result.Failed
+	err := h.Emit(ctx, item)
+	return err == nil && h.result.Failed == failed, err
+}
+
+func (h *streamSyncHandler) ShouldRetryItem(ctx context.Context, externalID string) (bool, error) {
+	item, err := h.svc.knowledgeService.GetRepository().FindByDataSourceExternalID(ctx, h.ds.TenantID, h.ds.KnowledgeBaseID, h.ds.ID, externalID)
+	if err != nil {
+		return false, err
+	}
+	return item == nil || item.ParseStatus == types.ParseStatusFailed || item.ParseStatus == types.ParseStatusCancelled, nil
+}
+
 // Checkpoint persists the connector cursor onto the data source and mirrors the
 // running counts into the sync log so progress survives a crash and the UI can
 // reflect a long sync mid-flight instead of jumping from 0 to done.
@@ -1036,6 +1053,9 @@ func (h *streamSyncHandler) Checkpoint(ctx context.Context, cursor *types.SyncCu
 	h.syncLog.ItemsDeleted = h.result.Deleted
 	h.syncLog.ItemsSkipped = h.result.Skipped
 	h.syncLog.ItemsFailed = h.result.Failed
+	if value, err := h.result.ToJSON(); err == nil {
+		h.syncLog.Result = value
+	}
 	if err := h.svc.syncLogRepo.UpdateResult(ctx, h.syncLog); err != nil {
 		logger.Warnf(ctx, "failed to persist sync log progress at checkpoint: %v", err)
 	}
@@ -1149,6 +1169,9 @@ func (s *DataSourceService) processSyncStreaming(
 	if result.Failed > 0 {
 		status = types.SyncLogStatusPartial
 		errMsg = fmt.Sprintf("%d document(s) failed to sync", result.Failed)
+		if ds.Type == types.ConnectorTypeTencentDocs {
+			errMsg = fmt.Sprintf("%d 份资料未完成同步，请查看日志", result.Failed)
+		}
 		if result.DeletionFailed > 0 {
 			errMsg += fmt.Sprintf("; %d deletion failure(s) will only retry on the next full sync", result.DeletionFailed)
 		}
@@ -1256,6 +1279,57 @@ func (s *DataSourceService) ValidateCredentials(ctx context.Context, connectorTy
 
 // Helper functions
 
+// ValidateCredentialsWithResources previews the new connection's tree without
+func (s *DataSourceService) PreviewDataSourceConnection(ctx context.Context, kind string, credentials map[string]interface{}) (*types.DataSourceConnectionPreview, error) {
+	connector, err := s.connectorRegistry.Get(kind)
+	if err != nil {
+		return nil, err
+	}
+	preview, ok := connector.(interface {
+		PreviewConnection(context.Context, *types.DataSourceConfig) (*types.DataSourceConnectionPreview, error)
+	})
+	if !ok {
+		return nil, fmt.Errorf("connection discovery is unavailable")
+	}
+	return preview.PreviewConnection(ctx, &types.DataSourceConfig{Type: kind, Credentials: credentials})
+}
+
+func (s *DataSourceService) PreviewStoredDataSourceConnection(ctx context.Context, id string) (*types.DataSourceConnectionPreview, error) {
+	ds, err := s.GetDataSource(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	config, err := ds.ParseConfig()
+	if err != nil {
+		return nil, err
+	}
+	connector, err := s.connectorRegistry.Get(ds.Type)
+	if err != nil {
+		return nil, err
+	}
+	preview, ok := connector.(interface {
+		PreviewConnection(context.Context, *types.DataSourceConfig) (*types.DataSourceConnectionPreview, error)
+	})
+	if !ok {
+		return nil, fmt.Errorf("connection discovery is unavailable")
+	}
+	return preview.PreviewConnection(ctx, config)
+}
+
+// ValidateCredentialsWithResources previews the new connection's tree without
+// persisting replacement credentials on an existing data source.
+func (s *DataSourceService) ValidateCredentialsWithResources(ctx context.Context, connectorType string, credentials map[string]interface{}) ([]types.Resource, error) {
+	connector, err := s.connectorRegistry.Get(connectorType)
+	if err != nil {
+		return nil, err
+	}
+	config := &types.DataSourceConfig{Type: connectorType, Credentials: credentials}
+	if err := connector.Validate(ctx, config); err != nil {
+		return nil, err
+	}
+	return connector.ListResources(ctx, config, "")
+}
+
 func (s *DataSourceService) validateDataSourceConfig(ctx context.Context, ds *types.DataSource) error {
 	connector, err := s.connectorRegistry.Get(ds.Type)
 	if err != nil {
@@ -1271,7 +1345,8 @@ func (s *DataSourceService) validateDataSourceConfig(ctx context.Context, ds *ty
 }
 
 // ingestItem writes a single FetchedItem into the knowledge base.
-// If a knowledge item with the same external_id already exists, it is deleted first (update = delete + re-create).
+// Identical fetched bytes only update source metadata/name/path, preserving the
+// knowledge ID and its derived content. Changed content uses delete + re-create.
 //
 // Routing logic:
 //   - Has Content bytes → CreateKnowledgeFromFile (走完整的文档解析 pipeline)
@@ -1279,6 +1354,19 @@ func (s *DataSourceService) validateDataSourceConfig(ctx context.Context, ds *ty
 //
 // Returns (isUpdate, error) — isUpdate is true when an existing item was replaced.
 func (s *DataSourceService) ingestItem(ctx context.Context, ds *types.DataSource, item *types.FetchedItem, tagIDs []string) (bool, error) {
+	var sourceOverrides *types.KnowledgeProcessOverrides
+	if ds.Type == types.ConnectorTypeTencentDocs && item.Metadata["tencent_docs_ppt_parser"] == "builtin" {
+		sourceOverrides = &types.KnowledgeProcessOverrides{ParserEngineRules: []types.ParserEngineRule{{FileTypes: []string{"ppt", "pptx"}, Engine: "builtin"}}}
+	}
+	if item.Metadata["tencent_docs_requires_ocr"] == "true" {
+		kb, err := s.kbService.GetKnowledgeBaseByID(ctx, ds.KnowledgeBaseID)
+		if err != nil {
+			return false, err
+		}
+		if kb == nil || !kb.IsMultimodalEnabled() {
+			return false, fmt.Errorf("图片型 PPT 需要启用图片解析并配置视觉模型")
+		}
+	}
 	// Channel decides the knowledge "source" label shown in the UI. Prefer the
 	// connector-supplied metadata["channel"] (e.g. Feishu Drive sets it to
 	// "feishu" so Drive docs share the wiki's "飞书" label instead of showing
@@ -1318,12 +1406,40 @@ func (s *DataSourceService) ingestItem(ctx context.Context, ds *types.DataSource
 		// other during updates.
 		existing, err := repo.FindByDataSourceExternalID(ctx, ds.TenantID, ds.KnowledgeBaseID, ds.ID, item.ExternalID)
 		if err != nil {
-			logger.Warnf(ctx, "failed to check existing knowledge for external_id=%s: %v", item.ExternalID, err)
-			// Non-fatal: proceed with creation (may produce duplicate)
+			return false, fmt.Errorf("check existing source knowledge: %w", err)
 		} else if existing != nil {
+			// Older Tencent Docs cursors did not retain links. Preserve an already
+			// stored link when the provider temporarily omits it on re-ingestion.
+			if ds.Type == types.ConnectorTypeTencentDocs && metadata["source_url"] == "" {
+				var priorMetadata map[string]any
+				if json.Unmarshal(existing.Metadata, &priorMetadata) == nil {
+					if priorURL, ok := priorMetadata["source_url"].(string); ok {
+						metadata["source_url"] = priorURL
+					}
+				}
+			}
+			unchanged, err := s.sameSyncContent(ctx, ds, existing, item)
+			if err != nil {
+				return false, err
+			}
+			if unchanged {
+				if err := s.updateUnchangedSyncItem(ctx, existing, item, metadata); err != nil {
+					return false, err
+				}
+				// Retry a failed parse in place. Cancellation is a user decision;
+				// ordinary synchronization must not restart cancelled work.
+				if existing.ParseStatus == types.ParseStatusFailed {
+					if _, err := s.knowledgeService.ReparseKnowledge(ctx, existing.ID, nil); err != nil {
+						return false, err
+					}
+					return true, nil
+				}
+				s.sweepStaleSubtree(ctx, ds, item)
+				return false, types.NewDuplicateFileError(existing)
+			}
 			logger.Infof(ctx, "found existing knowledge %s for external_id=%s, deleting for update", existing.ID, item.ExternalID)
 			if err := s.knowledgeService.DeleteKnowledge(ctx, existing.ID); err != nil {
-				logger.Warnf(ctx, "failed to delete existing knowledge %s: %v", existing.ID, err)
+				return false, fmt.Errorf("delete changed source knowledge: %w", err)
 			} else {
 				if herr := repo.HardDeleteKnowledge(ctx, ds.TenantID, existing.ID); herr != nil {
 					logger.Warnf(ctx, "failed to hard-delete replaced knowledge %s: %v", existing.ID, herr)
@@ -1348,7 +1464,7 @@ func (s *DataSourceService) ingestItem(ctx context.Context, ds *types.DataSource
 			item.FileName, // customFileName — must include extension for file-type validation
 			tagIDs,        // auto-tag from data source
 			channel,
-			nil,
+			sourceOverrides,
 		); err != nil {
 			var dupErr *types.DuplicateKnowledgeError
 			if errors.As(err, &dupErr) && dupIsSameNode(dupErr, item) {

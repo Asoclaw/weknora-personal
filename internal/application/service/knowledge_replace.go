@@ -34,7 +34,7 @@ import (
 // the old index) and the new file is discarded. A file is never deleted while
 // the row may still reference it.
 //
-// Identical content under the same name and folder is not re-parsed: changed
+// Identical content is not re-parsed, including a rename or move: changed
 // metadata is persisted and a DuplicateKnowledgeError carrying this knowledge
 // is returned. Unlike CreateKnowledgeFromFile, this does not treat another
 // knowledge's hash as a duplicate — path identity is what connectors need.
@@ -107,17 +107,23 @@ func (s *knowledgeService) ReplaceKnowledgeFile(ctx context.Context,
 		return nil, err
 	}
 
-	if hash == existing.FileHash && safeFileName == existing.FileName && folderPath == existing.FolderPath {
-		current := existing.GetMetadata()
-		for k, v := range metadata {
-			if current[k] != v {
-				if err := s.repo.UpdateKnowledgeColumn(ctx, existing.ID, "metadata", newMetadata); err != nil {
-					return nil, err
-				}
-				existing.Metadata = newMetadata
-				break
+	if hash == existing.FileHash {
+		columns, err := unchangedFileColumns(existing, safeFileName, folderPath, newMetadata)
+		if err != nil {
+			return nil, err
+		}
+		if len(columns) > 0 {
+			if _, changed := columns["metadata"]; changed {
+				columns["metadata"] = types.KnowledgeMetadataPatch(metadata)
+			}
+			if err := s.repo.UpdateKnowledgeColumns(ctx, existing.ID, columns); err != nil {
+				return nil, err
 			}
 		}
+		if title, ok := columns["title"].(string); ok {
+			existing.Title = title
+		}
+		existing.FileName, existing.FolderPath, existing.Metadata = safeFileName, folderPath, newMetadata
 		return existing, types.NewDuplicateFileError(existing)
 	}
 

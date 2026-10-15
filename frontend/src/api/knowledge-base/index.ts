@@ -306,6 +306,9 @@ export type KnowledgeListSortField = 'updated_at' | 'created_at' | 'file_name';
 export type KnowledgeListSortOrder = 'asc' | 'desc';
 
 export interface ListKnowledgeFilesParams {
+  file_types?: string[];
+  datasource_id?: string;
+  unassigned?: boolean;
   page: number;
   page_size: number;
   tag_ids?: string;
@@ -343,6 +346,7 @@ export interface KnowledgeFolderNode {
 }
 
 export interface KnowledgeFolderTree {
+  source_groups?: Array<{id: string; name: string; type: string; removed: boolean; unassigned?: boolean; tree: KnowledgeFolderTree}>;
   /** Documents that are not part of any uploaded folder. */
   root_document_count: number;
   /** Documents in the whole knowledge base. */
@@ -368,8 +372,8 @@ export function moveKnowledgeToFolder(kbId: string, ids: string[], folderPath: s
 }
 
 /** Rename or move a folder together with everything below it. */
-export function renameKnowledgeFolder(kbId: string, from: string, to: string) {
-  return put(`/api/v1/knowledge-bases/${kbId}/knowledge/folders`, { from, to });
+export function renameKnowledgeFolder(kbId: string, from: string, to: string, scope: {datasource_id?: string; unassigned?: boolean} = {}) {
+  return put(`/api/v1/knowledge-bases/${kbId}/knowledge/folders`, { from, to, ...scope });
 }
 
 export function getKnowledgeDetails(id: string, options?: { agent_id?: string; agent_source_tenant_id?: string }) {
@@ -424,6 +428,10 @@ export function batchDownloadKnowledge(kbId: string, ids: string[], signal?: Abo
 
 export function previewKnowledgeFile(id: string) {
   return getDown(`/api/v1/knowledge/${id}/preview`);
+}
+
+export function thumbnailKnowledgeFile(id: string, version: string) {
+  return getDown(`/api/v1/knowledge/${id}/thumbnail?v=${encodeURIComponent(version)}`);
 }
 
 /** @param idsQueryString - query string with ids (e.g. ids=xxx&ids=yyy) */

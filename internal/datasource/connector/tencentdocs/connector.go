@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"path"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Tencent/WeKnora/internal/datasource"
@@ -52,6 +54,7 @@ func (c *Connector) Validate(ctx context.Context, config *types.DataSourceConfig
 }
 
 const rootResourceID = "root"
+const fileResourcePrefix = "file:"
 
 type remoteFile struct {
 	ID         string
@@ -158,12 +161,13 @@ func (c *Connector) ListResources(ctx context.Context, config *types.DataSourceC
 	}
 	out := make([]types.Resource, 0)
 	for _, file := range files {
+		id, resourceType := file.ID, "folder"
 		if !file.IsFolder {
-			continue
+			id, resourceType = fileResourcePrefix+file.ID, "document"
 		}
 		out = append(out, types.Resource{
-			ExternalID: file.ID, Name: file.Name, Type: "folder",
-			ParentID: parentID, HasChildren: true,
+			ExternalID: id, Name: file.Name, Type: resourceType,
+			ParentID: parentID, HasChildren: file.IsFolder,
 		})
 	}
 	return out, nil
@@ -179,9 +183,12 @@ func (c *Connector) ResolveResourceAncestors(
 	if err != nil {
 		return nil, err
 	}
+	if site == siteSaaS {
+		return resolveSaaSSelectionParents(ctx, client, resourceIDs)
+	}
 	targets := make(map[string]bool, len(resourceIDs))
 	for _, id := range resourceIDs {
-		targets[id] = true
+		targets[strings.TrimPrefix(id, fileResourcePrefix)] = true
 	}
 	ancestors := map[string]bool{}
 	var walk func(id string, lineage []string, depth int) error
@@ -194,16 +201,15 @@ func (c *Connector) ResolveResourceAncestors(
 			return err
 		}
 		for _, file := range files {
-			if !file.IsFolder {
-				continue
-			}
 			if targets[file.ID] {
 				for _, ancestor := range append(lineage, id) {
 					ancestors[ancestor] = true
 				}
 			}
-			if err := walk(file.ID, append(lineage, id), depth+1); err != nil {
-				return err
+			if file.IsFolder {
+				if err := walk(file.ID, append(lineage, id), depth+1); err != nil {
+					return err
+				}
 			}
 		}
 		return nil
@@ -219,11 +225,107 @@ func (c *Connector) ResolveResourceAncestors(
 	return out, nil
 }
 
+// SaaS exposes the direct parent of a file/folder. Resolve only the selected
+// chains, never enumerate unrelated branches (which may be slow or forbidden).
+func resolveSaaSSelectionParents(ctx context.Context, client *mcpClient, resourceIDs []string) ([]string, error) {
+	roots, err := listFolder(ctx, client, siteSaaS, rootResourceID)
+	if err != nil {
+		return nil, err
+	}
+	topLevel := map[string]bool{rootResourceID: true}
+	for _, root := range roots {
+		topLevel[root.ID] = true
+	}
+	visited := map[string]bool{}
+	ancestors := map[string]bool{}
+	frontier := []string{}
+	for _, selected := range resourceIDs {
+		id := strings.TrimPrefix(selected, fileResourcePrefix)
+		if id != rootResourceID {
+			frontier = append(frontier, id)
+			ancestors[rootResourceID] = true
+		}
+	}
+	for depth := 0; len(frontier) > 0; depth++ {
+		if depth > 32 {
+			return nil, errors.New("Tencent Docs parent chain is too deep or cyclic")
+		}
+		level := []string{}
+		for _, id := range frontier {
+			if !visited[id] && !topLevel[id] {
+				visited[id] = true
+				level = append(level, id)
+			}
+		}
+		parents := make([]string, len(level))
+		errorsByID := make([]error, len(level))
+		workers := sync.WaitGroup{}
+		slots := make(chan struct{}, 4)
+		for index, id := range level {
+			workers.Add(1)
+			go func(index int, id string) {
+				defer workers.Done()
+				select {
+				case slots <- struct{}{}:
+				case <-ctx.Done():
+					errorsByID[index] = ctx.Err()
+					return
+				}
+				defer func() { <-slots }()
+				var response struct {
+					File struct {
+						EntryParent *string `json:"entry_parent_id"`
+						FileParent  *string `json:"file_parent_id"`
+						Parent      *string `json:"parent_id"`
+					} `json:"file"`
+				}
+				if err := client.call(ctx, "manage.query_file_info", map[string]any{"file_id": id, "need_entry": true}, &response); err != nil {
+					errorsByID[index] = err
+					return
+				}
+				parent := response.File.EntryParent
+				if parent == nil {
+					parent = response.File.FileParent
+				}
+				if parent == nil {
+					parent = response.File.Parent
+				}
+				if parent == nil {
+					errorsByID[index] = errors.New("Tencent Docs did not return parent information")
+					return
+				}
+				parents[index] = *parent
+			}(index, id)
+		}
+		workers.Wait()
+		frontier = nil
+		for index, parent := range parents {
+			if errorsByID[index] != nil {
+				return nil, errorsByID[index]
+			}
+			if parent == "" || parent == "0" {
+				continue
+			}
+			ancestors[parent] = true
+			frontier = append(frontier, parent)
+		}
+	}
+	result := make([]string, 0, len(ancestors))
+	for id := range ancestors {
+		result = append(result, id)
+	}
+	sort.Strings(result)
+	return result, nil
+}
+
 type cursorEntry struct {
-	ModifiedAt int64  `json:"modified_at"`
-	Path       string `json:"path"`
-	Title      string `json:"title"`
-	Hash       string `json:"hash,omitempty"`
+	FormatVersion int    `json:"format_version,omitempty"`
+	SkipReason    string `json:"skip_reason,omitempty"`
+	SourceURL     string `json:"source_url,omitempty"`
+	ModifiedAt    int64  `json:"modified_at"`
+	Path          string `json:"path"`
+	Title         string `json:"title"`
+	Hash          string `json:"hash,omitempty"`
 }
 
 func readCursor(cursor *types.SyncCursor) map[string]cursorEntry {
@@ -256,8 +358,11 @@ func (c *Connector) fetch(ctx context.Context, config *types.DataSourceConfig, r
 	if err != nil {
 		return nil, nil, err
 	}
+	if site == siteSaaS {
+		return c.fetchNativeBatch(ctx, config, resourceIDs, cursor)
+	}
 	if len(resourceIDs) == 0 {
-		return nil, nil, errors.New("select at least one Tencent Docs folder")
+		return nil, nil, errors.New("select at least one Tencent Docs folder or file")
 	}
 	previous := readCursor(cursor)
 	nextState := map[string]cursorEntry{}
@@ -266,15 +371,19 @@ func (c *Connector) fetch(ctx context.Context, config *types.DataSourceConfig, r
 	seen := map[string]bool{}
 	roots := append([]string(nil), resourceIDs...)
 	sort.Strings(roots)
-	var walk func(folderID, folderPath string, depth int) error
-	walk = func(folderID, folderPath string, depth int) error {
+	var walk func(folderID, folderPath string, depth int, selectedFiles []remoteFile) error
+	walk = func(folderID, folderPath string, depth int, selectedFiles []remoteFile) error {
 		if depth > 32 {
 			return errors.New("Tencent Docs folder tree is too deep")
 		}
-		files, err := listFolder(ctx, client, site, folderID)
-		if err != nil {
-			return err
-		} // Never infer deletion from an incomplete listing.
+		files := selectedFiles
+		if files == nil {
+			var err error
+			files, err = listFolder(ctx, client, site, folderID)
+			if err != nil {
+				return err
+			} // Never infer deletion from an incomplete listing.
+		}
 		for _, file := range files {
 			if file.ID == "" || seen[file.ID] {
 				continue
@@ -282,12 +391,13 @@ func (c *Connector) fetch(ctx context.Context, config *types.DataSourceConfig, r
 			seen[file.ID] = true
 			name := safeSegment(file.Name)
 			if file.IsFolder {
-				if err := walk(file.ID, path.Join(folderPath, name), depth+1); err != nil {
+				if err := walk(file.ID, path.Join(folderPath, name), depth+1, nil); err != nil {
 					return err
 				}
 				continue
 			}
 			key := site + ":" + file.ID
+			file.URL = validSourceURL(file.URL)
 			if site == sitePersonal {
 				info, err := getFileInfo(ctx, client, file.ID)
 				if err != nil {
@@ -306,8 +416,17 @@ func (c *Connector) fetch(ctx context.Context, config *types.DataSourceConfig, r
 				}
 			}
 			location := path.Join(folderPath, name)
-			signature := cursorEntry{ModifiedAt: file.ModifiedAt, Path: location, Title: file.Name}
-			if old, ok := previous[key]; ok && file.ModifiedAt > 0 && old.ModifiedAt == signature.ModifiedAt && old.Path == signature.Path && old.Title == signature.Title {
+			if file.URL == "" && site != sitePersonal {
+				if info, err := getFileInfo(ctx, client, file.ID); err == nil {
+					file.URL = validSourceURL(info.URL)
+				}
+			}
+			file.URL = validSourceURL(file.URL)
+			if file.URL == "" {
+				file.URL = validSourceURL(previous[key].SourceURL)
+			}
+			signature := cursorEntry{ModifiedAt: file.ModifiedAt, Path: location, Title: file.Name, SourceURL: file.URL}
+			if old, ok := previous[key]; ok && file.ModifiedAt > 0 && old.ModifiedAt == signature.ModifiedAt && old.Path == signature.Path && old.Title == signature.Title && old.SourceURL == signature.SourceURL {
 				nextState[key] = old
 				continue
 			}
@@ -325,7 +444,7 @@ func (c *Connector) fetch(ctx context.Context, config *types.DataSourceConfig, r
 			}
 			if len(item.Content) > 0 {
 				signature.Hash = fmt.Sprintf("%x", sha256.Sum256(item.Content))
-				if old, ok := previous[key]; ok && old.Hash == signature.Hash && old.Path == signature.Path && old.Title == signature.Title {
+				if old, ok := previous[key]; ok && old.Hash == signature.Hash && old.Path == signature.Path && old.Title == signature.Title && old.SourceURL == signature.SourceURL {
 					nextState[key] = old
 					continue
 				}
@@ -343,6 +462,21 @@ func (c *Connector) fetch(ctx context.Context, config *types.DataSourceConfig, r
 		return nil
 	}
 	for _, root := range roots {
+		if strings.HasPrefix(root, fileResourcePrefix) {
+			id := strings.TrimPrefix(root, fileResourcePrefix)
+			if seen[id] {
+				continue
+			}
+			info, err := getFileInfo(ctx, client, id)
+			if err != nil {
+				return nil, nil, err
+			}
+			file := remoteFile{ID: id, Name: info.Title, URL: info.URL, Ext: info.Ext, ModifiedAt: info.ModifiedAt}
+			if err := walk("", "", 0, []remoteFile{file}); err != nil {
+				return nil, nil, err
+			}
+			continue
+		}
 		folderPath := ""
 		if root != rootResourceID {
 			info, err := getFileInfo(ctx, client, root)
@@ -351,7 +485,7 @@ func (c *Connector) fetch(ctx context.Context, config *types.DataSourceConfig, r
 			}
 			folderPath = safeSegment(info.Title)
 		}
-		if err := walk(root, folderPath, 0); err != nil {
+		if err := walk(root, folderPath, 0, nil); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -482,6 +616,15 @@ func safeSegment(value string) string {
 	}, value)
 	if value == "." || value == ".." || value == "" {
 		return "untitled"
+	}
+	return value
+}
+
+func validSourceURL(value string) string {
+	value = strings.TrimSpace(value)
+	u, err := url.Parse(value)
+	if err != nil || u.Hostname() == "" || u.User != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		return ""
 	}
 	return value
 }

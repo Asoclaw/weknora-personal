@@ -74,6 +74,19 @@ type StreamHandler interface {
 	Checkpoint(ctx context.Context, cursor *types.SyncCursor) error
 }
 
+// AcknowledgingStreamHandler distinguishes a recorded ingest failure from a
+// successful Emit. Connectors can avoid advancing failed-item checkpoints.
+type AcknowledgingStreamHandler interface {
+	StreamHandler
+	EmitAcknowledged(ctx context.Context, item types.FetchedItem) (bool, error)
+}
+
+// RetryAwareStreamHandler lets image connectors retry later asynchronous parse
+// failures (or missing ingested rows), even when remote bytes are unchanged.
+type RetryAwareStreamHandler interface {
+	ShouldRetryItem(ctx context.Context, externalID string) (bool, error)
+}
+
 // StreamingConnector is an optional interface. Connectors that implement it let
 // the service interleave fetch→ingest→checkpoint so a large sync persists
 // incrementally and resumes after a timeout, rather than holding every item in
@@ -174,6 +187,14 @@ type ConnectorMetadata struct {
 // GetConnectorMetadata returns metadata for all available connectors
 // This is used by the frontend to display connector options
 var ConnectorMetadataRegistry = map[string]ConnectorMetadata{
+	types.ConnectorTypeMockplus: {
+		Type:         types.ConnectorTypeMockplus,
+		Name:         "Mockplus (摹客)",
+		Description:  "Sync current design board images",
+		Priority:     1,
+		AuthType:     "password",
+		Capabilities: []string{"incremental", "deletion_sync", "hierarchical"},
+	},
 	types.ConnectorTypeTencentDocs: {
 		Type:         types.ConnectorTypeTencentDocs,
 		Name:         "Tencent Docs (腾讯文档)",

@@ -628,7 +628,17 @@ func (s *knowledgeService) ListKnowledgeFolderTree(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	return types.BuildKnowledgeFolderTree(counts), nil
+	tree := types.BuildKnowledgeFolderTree(counts)
+	if repository, ok := s.repo.(interface {
+		ListKnowledgeSourceFolderCounts(context.Context, uint64, string) ([]*types.KnowledgeSourceFolderCount, []*types.KnowledgeFolderSource, error)
+	}); ok {
+		groupCounts, sources, err := repository.ListKnowledgeSourceFolderCounts(ctx, ctx.Value(types.TenantIDContextKey).(uint64), kbID)
+		if err != nil {
+			return nil, err
+		}
+		tree.SourceGroups = types.GroupKnowledgeSourceFolders(groupCounts, sources)
+	}
+	return tree, nil
 }
 
 // MoveKnowledgeToFolder re-files knowledge entries under folderPath. Since

@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -39,6 +40,7 @@ const (
 	ConnectorTypeGitLab      = "gitlab"
 	ConnectorTypeIMA         = "ima"
 	ConnectorTypeTencentDocs = "tencent_docs"
+	ConnectorTypeMockplus    = "mockplus"
 
 	// Sync modes
 	SyncModeIncremental = "incremental"
@@ -249,6 +251,15 @@ func (d DataSourceConfig) HasCredentials() bool {
 // stored. RSS feed URLs are non-secret configuration (settings); only
 // auth_headers count as credentials for that connector.
 func (d DataSourceConfig) HasConfiguredCredentials(connectorType string) bool {
+	if connectorType == ConnectorTypeMockplus {
+		user, _ := d.Credentials["username"].(string)
+		password, _ := d.Credentials["password"].(string)
+		if user != "" || password != "" || d.Settings["auth_mode"] == "password" {
+			return strings.TrimSpace(user) != "" && password != ""
+		}
+		user, password = MockplusEnvironmentCredentials()
+		return user != "" && password != ""
+	}
 	if len(d.Credentials) == 0 {
 		return false
 	}
@@ -265,6 +276,15 @@ func (d DataSourceConfig) HasConfiguredCredentials(connectorType string) bool {
 	}
 }
 
+// MockplusEnvironmentCredentials keeps private deployment credentials outside
+// persisted data-source configuration. Choose a complete pair, never mix users.
+func MockplusEnvironmentCredentials() (string, string) {
+	if user, password := strings.TrimSpace(os.Getenv("MOCKPLUS_USER")), os.Getenv("MOCKPLUS_PASS"); user != "" || password != "" {
+		return user, password
+	}
+	return strings.TrimSpace(os.Getenv("GREE_USER")), os.Getenv("GREE_PASS")
+}
+
 // StripNonSecretCredentials removes non-secret values mistakenly stored in the
 // credentials map before persistence.
 func (d *DataSourceConfig) StripNonSecretCredentials(connectorType string) {
@@ -272,6 +292,21 @@ func (d *DataSourceConfig) StripNonSecretCredentials(connectorType string) {
 		return
 	}
 	switch connectorType {
+	case ConnectorTypeMockplus:
+		// Connection parameters belong in public settings; only the account
+		// and password use the existing encrypted credential storage.
+		if d.Settings == nil {
+			d.Settings = make(map[string]interface{})
+		}
+		if d.Credentials["username"] != nil || d.Credentials["password"] != nil {
+			d.Settings["auth_mode"] = "password"
+		}
+		for _, key := range []string{"base_url", "team_id", "insecure_tls", "auth_mode"} {
+			if value, ok := d.Credentials[key]; ok {
+				d.Settings[key] = value
+				delete(d.Credentials, key)
+			}
+		}
 	case ConnectorTypeRSS:
 		delete(d.Credentials, "feed_urls")
 		if len(d.Credentials) == 0 {
@@ -281,6 +316,18 @@ func (d *DataSourceConfig) StripNonSecretCredentials(connectorType string) {
 }
 
 // Resource represents a syncable resource (document, folder, space) from external system
+type ConnectorTeam struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type DataSourceConnectionPreview struct {
+	Teams              []ConnectorTeam `json:"teams"`
+	TeamID             string          `json:"team_id"`
+	TeamDiscoveryError string          `json:"team_discovery_error,omitempty"`
+	Resources          []Resource      `json:"resources"`
+}
+
 type Resource struct {
 	// Unique identifier in the external system
 	ExternalID string `json:"external_id"`

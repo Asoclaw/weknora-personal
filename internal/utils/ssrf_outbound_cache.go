@@ -61,10 +61,12 @@ func validateURLForSSRFForOutbound(rawURL string) error {
 
 		ssrfOutboundValidateMisses.Add(1)
 		validationErr := ValidateURLForSSRF(rawURL)
-		ssrfOutboundCache.Store(cacheKey, &ssrfOutboundCacheEntry{
-			err:       validationErr,
-			expiresAt: time.Now().Add(outboundSSRFValidationTTL),
-		})
+		if validationErr == nil {
+			ssrfOutboundCache.Store(cacheKey, &ssrfOutboundCacheEntry{
+				err:       validationErr,
+				expiresAt: time.Now().Add(outboundSSRFValidationTTL),
+			})
+		}
 		return validationErr, validationErr
 	})
 	if err != nil {

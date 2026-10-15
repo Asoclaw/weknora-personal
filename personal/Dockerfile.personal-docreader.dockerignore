@@ -1,0 +1,4 @@
+**
+!docreader/
+!docreader/parser/
+!docreader/parser/pptx_media.py

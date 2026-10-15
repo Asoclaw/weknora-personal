@@ -2,13 +2,20 @@ services:
   frontend:
     image: weknora-personal-ui:v0.8.2
     build: !reset null
+    environment:
+      MAX_FILE_SIZE_MB: "60"
   app:
     image: weknora-personal-app:v0.8.2
     build: !reset null
     environment:
       WEKNORA_VERSION: v0.8.2
+      MAX_FILE_SIZE_MB: "60"
+      GOMEMLIMIT: 1536MiB
   docreader:
-    image: wechatopenai/weknora-docreader:v0.8.2
+    image: weknora-personal-docreader:v0.8.2
     build: !reset null
+    environment:
+      MAX_FILE_SIZE_MB: "60"
+      DOCREADER_GRPC_MAX_FILE_SIZE_MB: "60"
   postgres:
     image: paradedb/paradedb:v0.22.6-pg17

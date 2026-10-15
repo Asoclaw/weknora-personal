@@ -11,6 +11,10 @@ import (
 	"gorm.io/gorm"
 )
 
+// KnowledgeMetadataPatch merges source-managed keys into the current database
+// value instead of overwriting processing metadata from an earlier snapshot.
+type KnowledgeMetadataPatch map[string]string
+
 const (
 	// KnowledgeTypeManual represents the manual knowledge type
 	KnowledgeTypeManual = "manual"
@@ -94,12 +98,16 @@ const (
 // KnowledgeListFilter aggregates optional filters for listing knowledge entries
 // under a knowledge base. Empty / zero fields mean "no filter on that dimension".
 type KnowledgeListFilter struct {
+	DataSourceID string
+	Unassigned   bool
 	// TagIDs filters by multiple tags (OR semantics: match any of the given tags).
 	TagIDs []string
 	// Keyword performs a LIKE match on file_name / title when non-empty.
 	Keyword string
 	// FileType filters by file_type, or by type for the special values "manual" / "url".
 	FileType string
+	// FileTypes filters specific extensions with OR semantics, combined with other filters.
+	FileTypes []string
 	// ParseStatus filters by parse_status when non-empty (e.g. pending, processing, completed, failed).
 	ParseStatus string
 	// Source filters by ingestion channel when non-empty (web, api, feishu, notion, wechat, ...).

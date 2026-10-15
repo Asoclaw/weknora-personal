@@ -12,7 +12,6 @@ export interface DataSource {
   sync_schedule: string
   sync_mode: 'incremental' | 'full'
   status: 'active' | 'paused' | 'error'
-  conflict_strategy: 'overwrite' | 'skip'
   sync_deletions: boolean
   last_sync_at: string | null
   last_sync_result: any
@@ -115,8 +114,8 @@ export function validateConnection(id: string) {
 }
 
 // Validate credentials without persisting (during creation or credential replacement).
-export function validateCredentials(type: string, credentials: Record<string, any>) {
-  return post('/api/v1/datasource/validate-credentials', { type, credentials })
+export function validateCredentials(type: string, credentials: Record<string, any>, includeResources = false) {
+  return post('/api/v1/datasource/validate-credentials', { type, credentials, include_resources: includeResources }, { timeout: 120000 })
 }
 
 // listResources lists selectable resources for a data source. Pass parentId to

@@ -6,9 +6,14 @@ import { formatReferenceSnippet } from '@/utils/referenceSources';
 import KnowledgeTagPopover from './KnowledgeTagPopover.vue';
 import DocumentFileIcon from './DocumentFileIcon.vue';
 import DocumentActionMenu from './DocumentActionMenu.vue';
+import { resolveKnowledgeSourceLink } from '@/utils/knowledgeSourceLink';
 import FolderPickerMenu, { type FolderOption } from './FolderPickerMenu.vue';
 import KnowledgeProcessingTimeline from '@/components/knowledge-processing-timeline.vue';
 import { shownStall } from '@/utils/knowledgeProcessingStall';
+import KnowledgeImageThumbnail from './KnowledgeImageThumbnail.vue';
+import { isKnowledgeImage } from '@/utils/knowledgeImages';
+import FolderNavigationItems from './FolderNavigationItems.vue';
+import type { FolderNavigationItem } from '../folderContents';
 
 interface KnowledgeCard {
   id: string;
@@ -24,6 +29,8 @@ interface KnowledgeCard {
   type?: string;
   updated_at?: string;
   file_type?: string;
+  file_hash?: string;
+  file_path?: string;
   isMore?: boolean;
   metadata?: any;
   error_message?: string;
@@ -37,6 +44,7 @@ interface KnowledgeCard {
 }
 
 const props = defineProps<{
+  folders?: FolderNavigationItem[];
   items: KnowledgeCard[];
   kbId: string;
   selectedIds: Set<string>;
@@ -62,12 +70,14 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  (e: 'navigate-folder', item: FolderNavigationItem): void;
   (e: 'open', item: KnowledgeCard): void;
+  (e: 'preview-image', item: KnowledgeCard): void;
   (e: 'toggle-checkbox', id: string, checked: boolean, ctx?: { e?: Event }): void;
   (e: 'menu-visible-change', visible: boolean, item: KnowledgeCard): void;
   (e: 'action', action: 'download' | 'edit' | 'view-trace' | 'reparse' | 'cancel-parse' | 'move' | 'move-folder' | 'batch-manage' | 'delete', item: KnowledgeCard): void;
   (e: 'tags-changed', payload?: { deletedTagId?: string }): void;
-  (e: 'open-folder', path: string): void;
+  (e: 'open-folder', path: string, item?: any): void;
   (e: 'move-to-folder', item: KnowledgeCard, folderPath: string): void;
   // Move sub-flow emits
   (e: 'move-select-target', kb: any): void;
@@ -174,6 +184,12 @@ const onCardClick = (item: KnowledgeCard) => {
   }
   dismissCardPopover();
   emit('open', item);
+};
+
+const onThumbnailClick = (item: KnowledgeCard) => {
+  if (props.batchMode) { onCardClick(item); return; }
+  dismissCardPopover();
+  emit('preview-image', item);
 };
 
 // --- Hover popover ---
@@ -287,9 +303,9 @@ const onCardMouseLeave = () => {
 watch(() => props.items, dismissCardPopover);
 onBeforeUnmount(dismissCardPopover);
 
-const onOpenFolder = (path: string) => {
+const onOpenFolder = (path: string, item?: any) => {
   dismissCardPopover();
-  emit('open-folder', path);
+  emit('open-folder', path, item);
 };
 
 const onFolderPicked = (item: KnowledgeCard, path: string) => {
@@ -327,6 +343,7 @@ const handleAction = (action: 'download' | 'edit' | 'view-trace' | 'reparse' | '
   <div class="doc-card-view">
 
     <div class="doc-card-list doc-card-list-animated">
+    <FolderNavigationItems v-if="folders?.length" :items="folders" mode="grid" @navigate="item => emit('navigate-folder', item)" />
     <div
       class="knowledge-card"
       :class="{ 'is-selected': selectedIds.has(item.id), 'batch-mode': batchMode }"
@@ -354,7 +371,7 @@ const handleAction = (action: 'download' | 'edit' | 'view-trace' | 'reparse' | '
             />
           </div>
           <t-popup
-            v-else-if="canEdit"
+            v-else-if="canEdit || resolveKnowledgeSourceLink(item)"
             :visible="activeMenuIndex === index"
             overlayClassName="card-more"
             :on-visible-change="(v: boolean) => onMenuVisibleChange(v, item, index)"
@@ -386,11 +403,12 @@ const handleAction = (action: 'download' | 'edit' | 'view-trace' | 'reparse' | '
 
               <!-- Normal menu -->
               <div v-else-if="moveMenuMode === 'normal'" class="card-menu">
-                <button type="button" class="card-menu-item card-tag-menu-action" @click.stop="editTags(item)">
+                <button v-if="canEdit" type="button" class="card-menu-item card-tag-menu-action" @click.stop="editTags(item)">
                   <t-icon class="icon" name="tag" />
                   <span>{{ t('knowledgeBase.tagEditDialogHeading') }}</span>
                 </button>
                 <DocumentActionMenu
+                  :can-edit-actions="canEdit"
                   :item="item"
                   :can-download="canDownload"
                   :can-mutate-knowledge="canMutateKnowledge"
@@ -481,6 +499,7 @@ const handleAction = (action: 'download' | 'edit' | 'view-trace' | 'reparse' | '
           </t-popup>
         </div>
 
+        <KnowledgeImageThumbnail v-if="isKnowledgeImage(item)" :item="item" @open="onThumbnailClick(item)" />
         <div class="card-preview" @mouseenter="onCardMouseEnter($event, item)" @mouseleave="onCardMouseLeave">
         <!-- Parse status display -->
         <div v-if="isParseInFlight(item.parse_status)" class="card-analyze card-analyze-trace"
@@ -571,7 +590,7 @@ const handleAction = (action: 'download' | 'edit' | 'view-trace' | 'reparse' | '
         </KnowledgeTagPopover>
 
         <button v-if="showFolderPath && item.folder_path" type="button" class="card-folder"
-          :title="item.folder_path" @click.stop="onOpenFolder(item.folder_path)">
+          :title="item.folder_path" @click.stop="onOpenFolder(item.folder_path, item)">
           <t-icon name="folder" />
           <span>{{ item.folder_path }}</span>
         </button>

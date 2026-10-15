@@ -53,6 +53,18 @@ func TestDataSourceResponse_NilSafe(t *testing.T) {
 	assert.Equal(t, []*DataSourceResponse{}, NewDataSourceResponses(nil))
 }
 
+func TestMockplusResponseOnlyReturnsCredentialPresence(t *testing.T) {
+	config := &types.DataSourceConfig{Type: types.ConnectorTypeMockplus, Credentials: map[string]interface{}{"username": "page-account", "password": "page-password"}, Settings: map[string]interface{}{"base_url": "https://mockplus.example.test", "team_id": "team"}}
+	blob, err := config.ToJSON()
+	assert.NoError(t, err)
+	body, err := json.Marshal(NewDataSourceResponse(&types.DataSource{Type: types.ConnectorTypeMockplus, Config: blob}))
+	assert.NoError(t, err)
+	assert.NotContains(t, string(body), "page-account")
+	assert.NotContains(t, string(body), "page-password")
+	assert.Contains(t, string(body), `"configured":true`)
+	assert.Contains(t, string(body), "https://mockplus.example.test")
+}
+
 func TestDataSourceResponse_RSSFeedURLsFromCredentials(t *testing.T) {
 	cfg := types.DataSourceConfig{
 		Type: types.ConnectorTypeRSS,

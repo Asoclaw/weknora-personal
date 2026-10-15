@@ -22,9 +22,12 @@ import { diffWikiLines, type WikiDiffLine } from '@/utils/wikiLineDiff';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import DocumentPreview from '@/components/document-preview.vue';
+import PicturePreview from '@/components/picture-preview.vue';
+import { useRenderedImagePreview } from '@/hooks/useRenderedImagePreview';
 import DocumentFileIcon from '@/views/knowledge/components/DocumentFileIcon.vue';
 import KnowledgeProcessingTimeline from '@/components/knowledge-processing-timeline.vue';
 import { resolveKnowledgeDownloadFileName } from '@/views/knowledge/knowledgeDownloadFileName';
+import { resolveKnowledgeSourceLink } from '@/utils/knowledgeSourceLink';
 import { isKnownPreviewableExt, resolveFilePreviewExt } from '@/utils/filePreview';
 
 const { t } = useI18n();
@@ -192,6 +195,17 @@ const detailTags = computed(() => {
   const tags = props.details?.tags;
   return Array.isArray(tags) ? tags : [];
 });
+
+const originalSourceLink = computed(() => resolveKnowledgeSourceLink(props.details || {}));
+const copyOriginalSourceLink = async () => {
+  if (!originalSourceLink.value) return;
+  try {
+    await navigator.clipboard.writeText(originalSourceLink.value);
+    MessagePlugin.success(t('common.copied'));
+  } catch {
+    MessagePlugin.error(t('knowledgeBase.copySourceLinkFailed'));
+  }
+};
 
 const headerIconFileName = computed(() => {
   const detail = props.details;
@@ -534,6 +548,8 @@ const isChunkPageTransition = computed(
 let mdContentWrap = ref()
 // Drawer uses attach="body", so markdown nodes live outside mdContentWrap in the DOM.
 const docMarkdownRoot = ref<HTMLElement | null>(null)
+const docImagePreview = useRenderedImagePreview(docMarkdownRoot, () => props.visible, '.md-content img')
+watch(() => props.details.id, () => docImagePreview.close())
 
 const getMarkdownRenderRoot = (): ParentNode | null =>
   docMarkdownRoot.value ?? (mdContentWrap.value as ParentNode | null) ?? null
@@ -957,6 +973,7 @@ const getDisplayTitle = () => {
 };
 
 const channelLabelMap: Record<string, string> = {
+  mockplus: 'knowledgeBase.channelMockplus',
   web: 'knowledgeBase.channelWeb',
   api: 'knowledgeBase.channelApi',
   browser_extension: 'knowledgeBase.channelBrowserExtension',
@@ -1632,7 +1649,8 @@ const handleChunkPageChange = (pageInfo: { current: number }) => {
         </div>
       </t-drawer>
 
-      <div ref="docMarkdownRoot" class="doc-markdown-root doc-drawer-body setting-drawer__body">
+      <div ref="docMarkdownRoot" class="doc-markdown-root doc-drawer-body setting-drawer__body"
+        @click="docImagePreview.open" @keydown="docImagePreview.keydown">
         <section v-if="details.id" class="setting-drawer__section">
           <h4 class="setting-drawer__section-title">{{ $t('knowledgeBase.detailSectionMeta') }}</h4>
           <div class="doc-detail-rows">
@@ -1665,6 +1683,19 @@ const handleChunkPageChange = (pageInfo: { current: number }) => {
                   <span class="tag-text">{{ tag.name }}</span>
                 </t-tag>
               </span>
+            </div>
+            <div v-if="details.channel === 'tencent_docs'" class="doc-detail-row">
+              <span class="doc-detail-label">{{ $t('knowledgeBase.originalSourceLink') }}</span>
+              <div class="doc-detail-value original-source-value">
+                <template v-if="originalSourceLink">
+                  <a :href="originalSourceLink" target="_blank" rel="noopener noreferrer" class="original-source-url">{{ originalSourceLink }}</a>
+                  <div class="original-source-actions">
+                    <a :href="originalSourceLink" target="_blank" rel="noopener noreferrer">{{ $t('knowledgeBase.openOriginalDocument') }}</a>
+                    <t-button size="small" variant="text" @click="copyOriginalSourceLink">{{ $t('knowledgeBase.copySourceLink') }}</t-button>
+                  </div>
+                </template>
+                <span v-else>{{ $t('knowledgeBase.sourceLinkUnavailable') }}</span>
+              </div>
             </div>
           </div>
         </section>
@@ -1735,8 +1766,8 @@ const handleChunkPageChange = (pageInfo: { current: number }) => {
         <section v-if="details.type === 'url'" class="setting-drawer__section">
           <h4 class="setting-drawer__section-title">{{ $t('knowledgeBase.urlSource') }}</h4>
           <div class="url_link_box">
-            <a :href="isValidURL(details.source) ? details.source : 'javascript:void(0)'"
-              :target="isValidURL(details.source) ? '_blank' : undefined" class="url_link">
+            <a :href="originalSourceLink || undefined"
+              :target="originalSourceLink ? '_blank' : undefined" rel="noopener noreferrer" class="url_link">
               <t-icon name="link" size="14px" />
               <span class="url_text">{{ details.source }}</span>
               <t-icon name="jump" size="14px" class="jump-icon" />
@@ -2131,15 +2162,22 @@ const handleChunkPageChange = (pageInfo: { current: number }) => {
 
           <div v-else-if="viewMode === 'preview'">
             <DocumentPreview :knowledgeId="details.id" :fileType="details.file_type" :fileName="details.title"
-              :active="viewMode === 'preview'" />
+              :active="viewMode === 'preview'" :allow-image-download="canDownloadKB" />
           </div>
         </section>
       </div>
 
     </t-drawer>
+    <PicturePreview :review-img="docImagePreview.visible.value" :review-urls="docImagePreview.urls.value"
+      :review-index="docImagePreview.index.value" :allow-download="canDownloadKB" protect-original
+      @close-pre-img="docImagePreview.close" @index-change="(index) => docImagePreview.index.value = index" />
   </div>
 </template>
 <style scoped lang="less">
+.original-source-value { min-width: 0; }
+.original-source-url { color: var(--td-brand-color); overflow-wrap: anywhere; }
+.original-source-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.original-source-actions a { color: var(--td-brand-color); }
 @import "./css/markdown.less";
 
 .section-title-actions,

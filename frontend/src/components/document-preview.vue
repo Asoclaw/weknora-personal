@@ -12,6 +12,8 @@ import { sanitizeHTML, sanitizeMarkdownHTML } from '@/utils/security';
 import { preparePptxPreview, isCompletePptxRender } from '@/utils/pptxPreview';
 import { renderDocumentPreviewMarkdown } from '@/utils/documentPreviewMarkdown';
 import { buildHtmlPreview } from '@/utils/htmlPreview';
+import PicturePreview from '@/components/picture-preview.vue';
+import { useRenderedImagePreview } from '@/hooks/useRenderedImagePreview';
 import { openMermaidFullscreen } from '@/utils/mermaidViewer';
 import { renderMermaidToSvg } from '@/utils/mermaidShared';
 import {
@@ -43,6 +45,7 @@ const props = defineProps<{
   fileName: string;
   active: boolean;
   fillHeight?: boolean;
+  allowImageDownload?: boolean;
   /** Place preview actions beside the host header's download button. */
   toolbarTarget?: HTMLElement | null;
 }>();
@@ -304,6 +307,9 @@ function onImageLoad(e: Event) {
   imageNaturalHeight.value = img.naturalHeight;
 }
 
+const imagePreview = useRenderedImagePreview(previewRoot, () => props.active);
+watch(() => getPreviewSourceKey(), () => imagePreview.close());
+
 function getPreviewSourceKey(): string {
   if (props.sourceBlob) {
     return `resource-blob:${props.fileName}:${props.fileType}:${props.sourceBlob.size}:${props.sourceBlob.type}`;
@@ -490,7 +496,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="previewRoot" tabindex="-1" :aria-label="fileName" class="document-preview" :class="{ 'is-fullscreen': isFullscreen, 'fill-height': fillHeight }">
+  <div ref="previewRoot" tabindex="-1" :aria-label="fileName" class="document-preview" :class="{ 'is-fullscreen': isFullscreen, 'fill-height': fillHeight }"
+    @click="imagePreview.open" @keydown="imagePreview.keydown">
     <!-- Toolbar -->
     <Teleport :to="toolbarTarget || 'body'" :disabled="isFullscreen || !toolbarTarget">
       <div class="preview-toolbar" :class="{ 'is-inline': toolbarTarget && !isFullscreen }" v-if="isFullscreen || (!loading && !error && previewType !== 'unsupported')">
@@ -616,6 +623,10 @@ onUnmounted(() => {
       </video>
     </div>
   </div>
+  <PicturePreview :review-img="imagePreview.visible.value" :review-urls="imagePreview.urls.value"
+    :review-index="imagePreview.index.value" :allow-download="allowImageDownload === true" protect-original
+    :attach-to="isFullscreen ? previewRoot || 'body' : 'body'"
+    @close-pre-img="imagePreview.close" @index-change="(index) => imagePreview.index.value = index" />
 </template>
 
 <style scoped lang="less">

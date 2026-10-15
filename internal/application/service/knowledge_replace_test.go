@@ -73,7 +73,15 @@ func (r *replaceFileRepo) apply(values map[string]interface{}) {
 		case "file_path":
 			r.row.FilePath = value.(string)
 		case "metadata":
-			r.row.Metadata = value.(types.JSON)
+			if patch, ok := value.(types.KnowledgeMetadataPatch); ok {
+				merged, err := mergeKnowledgeMetadata(r.row.Metadata, patch)
+				if err != nil {
+					panic(err)
+				}
+				r.row.Metadata = merged
+			} else {
+				r.row.Metadata = value.(types.JSON)
+			}
 		case "parse_status":
 			r.row.ParseStatus = value.(string)
 		case "enable_status":

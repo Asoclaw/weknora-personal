@@ -8,6 +8,37 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestMockplusCredentialsAndConnectionParameters(t *testing.T) {
+	t.Setenv("MOCKPLUS_USER", "test-user")
+	t.Setenv("MOCKPLUS_PASS", "test-password")
+	config := DataSourceConfig{Credentials: map[string]interface{}{"username": "page-user", "password": "incoming-secret", "base_url": "https://mockplus.example.test", "team_id": "team", "insecure_tls": false}}
+	config.StripNonSecretCredentials(ConnectorTypeMockplus)
+	if len(config.Credentials) != 2 || config.Settings["base_url"] != "https://mockplus.example.test" || !config.HasConfiguredCredentials(ConnectorTypeMockplus) {
+		t.Fatal("public connection parameters must be separate from credentials")
+	}
+	config.Credentials["password"] = ""
+	if config.HasConfiguredCredentials(ConnectorTypeMockplus) {
+		t.Fatal("incomplete page credentials must not fall back to the environment")
+	}
+	config.Credentials = nil
+	if config.HasConfiguredCredentials(ConnectorTypeMockplus) {
+		t.Fatal("removed page credentials must not reactivate environment credentials")
+	}
+}
+
+func TestMockplusPageCredentialsEncryptAndRoundTrip(t *testing.T) {
+	withAESKey(t, testAESKey32)
+	config := &DataSourceConfig{Type: ConnectorTypeMockplus, Credentials: map[string]interface{}{"username": "page-account", "password": "page-secret"}}
+	blob, err := config.ToJSON()
+	assert.NoError(t, err)
+	assert.NotContains(t, string(blob), "page-account")
+	assert.NotContains(t, string(blob), "page-secret")
+	assert.Contains(t, string(blob), "enc:v1:")
+	parsed, err := (&DataSource{Config: blob}).ParseConfig()
+	assert.NoError(t, err)
+	assert.Equal(t, "page-secret", parsed.Credentials["password"])
+}
+
 func TestDataSourceConfig_ToJSON_EncryptsStringCredentials(t *testing.T) {
 	withAESKey(t, testAESKey32)
 	cfg := &DataSourceConfig{

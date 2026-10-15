@@ -1,6 +1,6 @@
 <template>
-  <aside class="kb-folder-tree" :class="{ 'is-collapsed': collapsed }">
-    <div class="kb-folder-tree__header">
+  <aside class="kb-folder-tree" :class="{ 'is-embedded': embedded, 'is-collapsed': collapsed }">
+    <div v-if="!embedded" class="kb-folder-tree__header">
       <template v-if="!collapsed">
         <span class="kb-folder-tree__title">{{ t('knowledgeBase.folderTree.title') }}</span>
         <span v-if="tree && !loading" class="kb-folder-tree__total"
@@ -48,7 +48,7 @@
             'is-menu-open': menuOpenPath === row.path,
           }"
           :style="{ '--kb-folder-depth': row.depth }"
-          :title="row.kind === 'root' ? t('knowledgeBase.folderTree.rootRowTip') : row.path"
+          :title="row.kind === 'root' ? (embedded ? rootLabel : t('knowledgeBase.folderTree.rootRowTip')) : row.path"
           role="button"
           tabindex="0"
           @click="emit('select', row.path)"
@@ -72,7 +72,8 @@
           </span>
           <span v-else class="kb-folder-row__toggle-placeholder" aria-hidden="true" />
 
-          <t-icon
+          <DataSourceTypeIcon v-if="row.kind === 'root' && rootSourceType" :type="rootSourceType" :size="16" />
+          <t-icon v-else
             :name="row.kind === 'root' || (row.hasChildren && isExpanded(row.path)) ? 'folder-open' : 'folder'"
             class="kb-folder-row__icon"
           />
@@ -94,8 +95,8 @@
             </span>
             <span class="kb-folder-row__trailing">
               <span class="kb-folder-row__count"
-                :title="t('knowledgeBase.folderTree.countHint', { direct: row.documentCount, total: row.totalCount })">
-                {{ row.documentCount }}
+                :title="embedded && row.kind === 'root' ? undefined : t('knowledgeBase.folderTree.countHint', { direct: row.documentCount })">
+                {{ row.totalCount }}
               </span>
               <t-popup
                 v-if="canEdit && row.kind === 'folder'"
@@ -136,6 +137,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import DataSourceTypeIcon from '../settings/DataSourceTypeIcon.vue'
 import type { KnowledgeFolderTree } from '@/api/knowledge-base/index'
 import {
   buildFolderRows,
@@ -149,7 +151,9 @@ const props = withDefaults(defineProps<{
   tree: KnowledgeFolderTree | null
   /** Selected folder path; the empty string is the knowledge base top level. */
   rootLabel?: string
-  selectedPath: string
+  selectedPath: string | null
+  embedded?: boolean
+  rootSourceType?: string
   loading?: boolean
   collapsed?: boolean
   canEdit?: boolean
@@ -157,6 +161,7 @@ const props = withDefaults(defineProps<{
   loading: false,
   collapsed: false,
   canEdit: false,
+  embedded: false,
 })
 
 const emit = defineEmits<{
@@ -168,7 +173,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 // The root starts expanded so the uploaded structure is visible without a click.
-const expanded = ref(new Set<string>([ROOT_FOLDER_PATH]))
+const expanded = ref(new Set<string>(props.embedded ? [] : [ROOT_FOLDER_PATH]))
 // null, not '', because '' is the root's own path: a falsy sentinel would put
 // the root row into rename mode permanently.
 const renamingPath = ref<string | null>(null)
@@ -230,6 +235,7 @@ const commitRename = (row: FolderRow) => {
 watch(
   () => [props.selectedPath, props.tree] as const,
   () => {
+    if (props.selectedPath === null) return
     const next = new Set(expanded.value)
     folderAncestorPaths(props.selectedPath).forEach((path) => next.add(path))
     expanded.value = next
@@ -242,7 +248,7 @@ watch(
 watch(
   () => props.tree,
   (tree) => {
-    if (!tree?.folders?.length || expanded.value.size > 1) return
+    if (props.embedded || !tree?.folders?.length || expanded.value.size > 1) return
     const next = new Set(expanded.value)
     tree.folders.forEach((folder) => next.add(folder.path))
     expanded.value = next
@@ -252,6 +258,7 @@ watch(
 </script>
 
 <style scoped lang="less">
+.kb-folder-tree.is-embedded { width: 100%; border-right: 0; padding-right: 0; margin-right: 0; flex-shrink: 0; }
 .kb-folder-tree {
   --kb-folder-indent: 14px;
   display: flex;

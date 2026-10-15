@@ -6,11 +6,14 @@ import base64
 import io
 import logging
 import os
+import posixpath
 import re
 import subprocess
 import tempfile
 import uuid
 import zipfile
+import xml.etree.ElementTree as ET
+from urllib.parse import unquote
 from typing import Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
@@ -90,11 +93,43 @@ def rasterize_media_bytes(name: str, data: bytes) -> bytes | None:
 
 
 def list_pptx_media(pptx_bytes: bytes) -> List[Tuple[str, bytes]]:
-    """Return (zip path, raw bytes) for each file under ppt/media/, in archive order."""
+    """Follow each slide's picture relationships in page/shape order.
+
+    Tencent exports use ppt/slides/media, rather than the usual ppt/media.
+    External relationships are never fetched. Shared images remain repeated
+    when referenced on multiple pages so fallback refs retain page alignment.
+    """
     items: List[Tuple[str, bytes]] = []
     with zipfile.ZipFile(io.BytesIO(pptx_bytes)) as archive:
+        names = set(archive.namelist())
+        slides = sorted(
+            (name for name in names if re.fullmatch(r"ppt/slides/slide\d+\.xml", name)),
+            key=lambda name: int(re.search(r"slide(\d+)\.xml$", name).group(1)),
+        )
+        for slide in slides:
+            rel_name = posixpath.join(posixpath.dirname(slide), "_rels", posixpath.basename(slide) + ".rels")
+            if rel_name not in names:
+                continue
+            relationships = {}
+            for rel in ET.fromstring(archive.read(rel_name)):
+                if rel.attrib.get("Type", "").endswith("/image") and rel.attrib.get("TargetMode", "Internal") == "Internal":
+                    target = unquote(rel.attrib.get("Target", ""))
+                    if target.startswith("/"):
+                        target = target.lstrip("/")
+                    else:
+                        target = posixpath.normpath(posixpath.join(posixpath.dirname(slide), target))
+                    if target.startswith("ppt/") and target in names:
+                        relationships[rel.attrib.get("Id")] = target
+            for node in ET.fromstring(archive.read(slide)).iter():
+                if node.tag.endswith("}blip"):
+                    image_id = node.attrib.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
+                    target = relationships.get(image_id)
+                    if target:
+                        items.append((target, archive.read(target)))
+        if items:
+            return items
         for name in archive.namelist():
-            if not name.startswith("ppt/media/"):
+            if not name.startswith(("ppt/media/", "ppt/slides/media/")):
                 continue
             base = os.path.basename(name)
             if not base or base.startswith("."):

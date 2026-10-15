@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { resolveKnowledgeSourceLink } from '@/utils/knowledgeSourceLink';
 
 interface KnowledgeItem {
   id: string;
@@ -7,16 +8,20 @@ interface KnowledgeItem {
   title?: string;
   type?: string;
   parse_status?: string;
+  channel?: string;
+  source?: string;
+  metadata?: unknown;
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   item: KnowledgeItem;
   canDownload: boolean;
   canMutateKnowledge: boolean;
   traceVisible: boolean;
+  canEditActions?: boolean;
   /** Whether the knowledge base has a folder structure to file documents into. */
   foldersAvailable?: boolean;
-}>();
+}>(), { canEditActions: true });
 
 const emit = defineEmits<{
   (e: 'download'): void;
@@ -38,9 +43,16 @@ const isParseInFlight = computed(() =>
 );
 
 const fileName = computed(() => props.item.file_name || props.item.title || props.item.id);
+const sourceLink = computed(() => resolveKnowledgeSourceLink(props.item));
 </script>
 
 <template>
+  <a v-if="sourceLink" :href="sourceLink" target="_blank" rel="noopener noreferrer"
+    class="doc-action-menu-item" @click.stop>
+    <t-icon class="icon" name="jump" />
+    <span>{{ $t('knowledgeBase.openOriginalDocument') }}</span>
+  </a>
+  <template v-if="canEditActions">
   <!-- 下载原始文档 -->
   <div
     v-if="canDownload && (item.type === 'file' || item.type === 'manual')"
@@ -122,10 +134,12 @@ const fileName = computed(() => props.item.file_name || props.item.title || prop
       <span>{{ $t('knowledgeBase.deleteDocument') }}</span>
     </div>
   </t-popconfirm>
+  </template>
 </template>
 
 <style scoped lang="less">
 .doc-action-menu-item {
+  text-decoration: none;
   display: flex;
   align-items: center;
   gap: 8px;

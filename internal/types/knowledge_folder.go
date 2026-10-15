@@ -137,6 +137,7 @@ type KnowledgeFolderNode struct {
 
 // KnowledgeFolderTree is the response payload of the folder tree endpoint.
 type KnowledgeFolderTree struct {
+	SourceGroups []*KnowledgeSourceFolderGroup `json:"source_groups,omitempty"`
 	// RootDocumentCount counts entries that live at the knowledge base root
 	// (folder_path = ""), i.e. documents that were not uploaded as part of a
 	// folder.

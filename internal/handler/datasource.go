@@ -288,6 +288,19 @@ func (h *DataSourceHandler) ValidateConnection(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if ds, err := h.service.GetDataSource(ctx, id); err == nil && ds.Type == types.ConnectorTypeMockplus {
+		if discovery, ok := h.service.(interface {
+			PreviewStoredDataSourceConnection(context.Context, string) (*types.DataSourceConnectionPreview, error)
+		}); ok {
+			preview, err := discovery.PreviewStoredDataSourceConnection(ctx, id)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"status": "connected", "teams": preview.Teams, "team_id": preview.TeamID, "team_discovery_error": preview.TeamDiscoveryError, "resources": preview.Resources})
+			return
+		}
+	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "connected"})
 }
@@ -315,14 +328,45 @@ func (h *DataSourceHandler) ValidateCredentials(c *gin.Context) {
 	}
 
 	var req struct {
-		Type        string                 `json:"type" binding:"required"`
-		Credentials map[string]interface{} `json:"credentials" binding:"required"`
+		Type             string                 `json:"type" binding:"required"`
+		Credentials      map[string]interface{} `json:"credentials" binding:"required"`
+		IncludeResources bool                   `json:"include_resources"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: type and credentials are required"})
 		return
 	}
 
+	if req.IncludeResources && req.Type == types.ConnectorTypeMockplus {
+		if discovery, ok := h.service.(interface {
+			PreviewDataSourceConnection(context.Context, string, map[string]interface{}) (*types.DataSourceConnectionPreview, error)
+		}); ok {
+			preview, err := discovery.PreviewDataSourceConnection(ctx, req.Type, req.Credentials)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"status": "connected", "teams": preview.Teams, "team_id": preview.TeamID, "team_discovery_error": preview.TeamDiscoveryError, "resources": preview.Resources})
+			return
+		}
+		preview, ok := h.service.(interface {
+			ValidateCredentialsWithResources(context.Context, string, map[string]interface{}) ([]types.Resource, error)
+		})
+		if !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "connection preview is unavailable"})
+			return
+		}
+		resources, err := preview.ValidateCredentialsWithResources(ctx, req.Type, req.Credentials)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if resources == nil {
+			resources = []types.Resource{}
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "connected", "resources": resources})
+		return
+	}
 	if err := h.service.ValidateCredentials(ctx, req.Type, req.Credentials); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { FILE_TYPE_FILTER_EXTENSIONS } from './utils/fileTypeFilter';
 import { ref, onMounted, onUnmounted, watch, reactive, computed, nextTick } from "vue";
+import ResizableFolderPane from './components/ResizableFolderPane.vue';
+import { directFolderContents, shouldShowFolderContents, type FolderNavigationItem } from './folderContents';
 import { MessagePlugin } from "tdesign-vue-next";
 import DocContent from "@/components/doc-content.vue";
 import useKnowledgeBase from '@/hooks/useKnowledgeBase';
@@ -46,9 +49,12 @@ import { knowledgeSpansPayloadHasTrace } from '@/utils/knowledgeTrace';
 import FAQEntryManager from './components/FAQEntryManager.vue';
 import DocumentListView from './components/DocumentListView.vue';
 import DocumentCardView from './components/DocumentCardView.vue';
+import KnowledgeImageGallery from './components/KnowledgeImageGallery.vue';
+import type { KnowledgeImage } from '@/utils/knowledgeImages';
 import DocumentBatchBar from './components/DocumentBatchBar.vue';
 import KbUploadSourceDropdown from './components/KbUploadSourceDropdown.vue';
 import KbFolderTree from './components/KbFolderTree.vue';
+import SourceGroupedFolderTree from './components/SourceGroupedFolderTree.vue';
 import BatchTagDialog from './components/BatchTagDialog.vue';
 import type { KnowledgeProcessOverrides } from '@/types/knowledgeProcess';
 import { useUploadConfirmStore, type UploadConfirmResult } from '@/stores/uploadConfirm';
@@ -620,26 +626,8 @@ const tagTotal = ref(0);
 let tagSearchDebounce: number | null = null;
 let docSearchDebounce: number | null = null;
 const docSearchKeyword = ref('');
-const selectedFileType = ref('');
-const fileTypeOptions = computed(() => [
-  { label: t('knowledgeBase.allFileTypes'), value: '' },
-  { label: 'PDF', value: 'pdf' },
-  { label: 'DOCX', value: 'docx' },
-  { label: 'DOC', value: 'doc' },
-  { label: 'PPTX', value: 'pptx' },
-  { label: 'PPT', value: 'ppt' },
-  { label: 'EPUB', value: 'epub' },
-  { label: 'MHTML', value: 'mhtml' },
-  { label: 'TXT', value: 'txt' },
-  { label: 'MD', value: 'md' },
-  { label: 'URL', value: 'url' },
-  { label: t('knowledgeBase.typeManual'), value: 'manual' },
-  { label: 'MP3', value: 'mp3' },
-  { label: 'WAV', value: 'wav' },
-  { label: 'M4A', value: 'm4a' },
-  { label: 'FLAC', value: 'flac' },
-  { label: 'OGG', value: 'ogg' },
-]);
+const selectedFileTypes = ref<string[]>([]);
+const fileTypeOptions = FILE_TYPE_FILTER_EXTENSIONS.map(value => ({ label: value.toUpperCase(), value }));
 const selectedParseStatus = ref('');
 const parseStatusOptions = computed(() => [
   { label: t('knowledgeBase.allParseStatuses'), value: '' },
@@ -668,6 +656,7 @@ const sourceOptions = computed(() => [
   { label: t('knowledgeBase.channelConfluence'), value: 'confluence' },
   { label: t('knowledgeBase.channelGitLab'), value: 'gitlab' },
   { label: t('knowledgeBase.channelIma'), value: 'ima' },
+  { label: t('knowledgeBase.channelMockplus'), value: 'mockplus' },
   { label: t('knowledgeBase.channelWechat'), value: 'wechat' },
   { label: t('knowledgeBase.channelWecom'), value: 'wecom' },
   { label: t('knowledgeBase.channelDingtalk'), value: 'dingtalk' },
@@ -678,11 +667,12 @@ const sourceOptions = computed(() => [
 const updatedTimeRange = ref<string[]>([]);
 const filtersExpanded = ref(false);
 const activeFilterCount = computed(() =>
-  [selectedFileType.value, selectedParseStatus.value, selectedSource.value,
-    updatedTimeRange.value?.some(Boolean)].filter(Boolean).length + selectedTagIds.value.length,
+  [selectedFileTypes.value.length > 0, selectedParseStatus.value, selectedSource.value,
+    updatedTimeRange.value?.some(Boolean)].filter(Boolean).length + selectedTagIds.value.length + (showRightFolders.value ? 0 : 1),
 );
 const clearDocumentFilters = () => {
-  selectedFileType.value = '';
+  showRightFolders.value = true;
+  selectedFileTypes.value = [];
   selectedParseStatus.value = '';
   selectedSource.value = '';
   updatedTimeRange.value = [];
@@ -760,8 +750,16 @@ const folderTreeLoading = ref(false);
 // The folder being browsed; ROOT_FOLDER_PATH ('') is the knowledge base top
 // level, a real node of the tree rather than a separate mode.
 const selectedFolderPath = ref<string>(ROOT_FOLDER_PATH);
+const selectedSourceGroup = ref<string | null>(null);
+const sourceGrouped = computed(() => !!folderTree.value?.source_groups?.length);
+const activeSourceGroup = computed(() => folderTree.value?.source_groups?.find(group => (group.unassigned ? '__unassigned__' : group.id) === selectedSourceGroup.value));
+const navigationFolderTree = computed(() => sourceGrouped.value ? (activeSourceGroup.value?.tree || {folders:[],root_document_count:0,total_document_count:folderTree.value?.total_document_count || 0}) : folderTree.value);
+const activeSourceLabel = computed(() => activeSourceGroup.value ? (activeSourceGroup.value.unassigned ? t('knowledgeBase.sourceGroups.other') : activeSourceGroup.value.name || t('knowledgeBase.sourceGroups.removed')) : t('knowledgeBase.sourceGroups.all'));
 const folderTreeCollapsed = ref(readStoredFlag(FOLDER_TREE_COLLAPSED_KEY));
-const hasFolders = computed(() => (folderTree.value?.folders?.length ?? 0) > 0);
+const SHOW_RIGHT_FOLDERS_KEY = 'weknora.kbShowContentFolders';
+const showRightFolders = ref(readStoredFlag(SHOW_RIGHT_FOLDERS_KEY, true));
+watch(showRightFolders, value => writeStoredFlag(SHOW_RIGHT_FOLDERS_KEY, value));
+const hasFolders = computed(() => sourceGrouped.value || (folderTree.value?.folders?.length ?? 0) > 0);
 // The folder column only earns its space once the knowledge base actually has
 // folders, so knowledge bases filled with single-file uploads look unchanged.
 const showFolderTree = computed(() => !isFAQ.value && hasFolders.value);
@@ -771,32 +769,48 @@ const isFiltering = computed(() =>
   isFilteringDocuments({
     keyword: docSearchKeyword.value,
     tagIds: selectedTagIds.value,
-    fileType: selectedFileType.value,
+    fileType: selectedFileTypes.value.join(','),
     parseStatus: selectedParseStatus.value,
     source: selectedSource.value,
     timeRange: updatedTimeRange.value,
   }),
 );
 // A row's folder is worth showing only when the list can span folders.
-const showDocumentFolderPath = computed(() => hasFolders.value && isFiltering.value);
+const showDocumentFolderPath = computed(() => hasFolders.value && (isFiltering.value || (sourceGrouped.value && !selectedFolderPath.value)));
 const folderBreadcrumbs = computed(() => buildFolderBreadcrumbs(selectedFolderPath.value));
+const visibleContentFolders = computed(() => {
+  if (!shouldShowFolderContents(showRightFolders.value, isFiltering.value)) return [];
+  return directFolderContents(folderTree.value, selectedSourceGroup.value, selectedFolderPath.value).map(item => ({
+    ...item,
+    name: item.path === '' && item.group !== null ? (item.group === '__unassigned__' ? t('knowledgeBase.sourceGroups.other') : item.name || t('knowledgeBase.sourceGroups.removed')) : item.name,
+  }));
+});
+const navigateContentFolder = (item: FolderNavigationItem) => {
+  if (sourceGrouped.value) handleSourceFolderSelect({ group: item.group, path: item.path });
+  else handleFolderSelect(item.path);
+};
 
 const filterParams = computed(() => {
   const [start, end] = updatedTimeRange.value || [];
   return {
     tag_ids: selectedTagIds.value.length > 0 ? selectedTagIds.value.join(',') : undefined,
     keyword: docSearchKeyword.value ? docSearchKeyword.value.trim() : undefined,
-    file_type: selectedFileType.value || undefined,
+    file_types: selectedFileTypes.value.length ? [...selectedFileTypes.value] : undefined,
     parse_status: selectedParseStatus.value || undefined,
     source: selectedSource.value || undefined,
     start_time: start ? `${start} 00:00:00` : undefined,
     end_time: end ? `${end} 23:59:59` : undefined,
     ...getDocumentSortParams(selectedDocumentSort.value),
-    folder_path: selectedFolderPath.value,
+    datasource_id: sourceGrouped.value && activeSourceGroup.value && !activeSourceGroup.value.unassigned ? activeSourceGroup.value.id : undefined,
+    unassigned: sourceGrouped.value && activeSourceGroup.value?.unassigned ? true : undefined,
+    folder_path: sourceGrouped.value && !selectedFolderPath.value ? undefined : selectedFolderPath.value,
     // Filtering searches descendants; browsing shows this folder's documents.
     folder_recursive: isFiltering.value,
   };
 });
+
+const previewImage = ref<KnowledgeImage | null>(null);
+watch(() => `${kbId.value}:${JSON.stringify(filterParams.value)}`, () => { previewImage.value = null; });
 
 const handleDocumentSortSelect = (value: DocumentSortValue) => {
   documentSortPanelVisible.value = false;
@@ -861,7 +875,9 @@ const loadFolderTree = async (kbIdValue: string) => {
     folderTree.value = (res?.data as KnowledgeFolderTree) || null;
     // A folder can disappear (its last document was deleted or moved); fall
     // back to the root instead of leaving an empty, unreachable view.
-    if (!folderExistsInTree(folderTree.value?.folders || [], selectedFolderPath.value)) {
+    if (!sourceGrouped.value) selectedSourceGroup.value = null;
+    if (sourceGrouped.value && selectedSourceGroup.value !== null && !activeSourceGroup.value) {selectedSourceGroup.value=null;selectedFolderPath.value=ROOT_FOLDER_PATH;}
+    if (!folderExistsInTree(navigationFolderTree.value?.folders || [], selectedFolderPath.value)) {
       selectedFolderPath.value = ROOT_FOLDER_PATH;
     }
   } catch (error) {
@@ -875,10 +891,24 @@ const loadFolderTree = async (kbIdValue: string) => {
   }
 };
 
-const handleFolderSelect = (path: string) => {
+const handleFolderSelect = (path: string, item?: {metadata?: unknown}) => {
+  if (sourceGrouped.value && item) {
+    let metadata:any=item.metadata || {};
+    if(typeof metadata==='string'){try{metadata=JSON.parse(metadata)}catch{metadata={}}}
+    selectedSourceGroup.value=metadata?.datasource_id || '__unassigned__';
+  }
   if (selectedFolderPath.value === path) return;
   selectedFolderPath.value = path;
 };
+
+const handleSourceFolderSelect = (selection: {group:string|null;path:string}) => {
+  selectedSourceGroup.value = selection.group;
+  selectedFolderPath.value = selection.path;
+};
+
+watch(() => uiStore.showKBEditorModal, (visible, previous) => {
+  if (!visible && previous && kbId.value) void loadFolderTree(kbId.value);
+});
 
 // ── Re-filing documents and renaming folders ──
 // folder_path is display-only, so both operations are a plain column update:
@@ -893,7 +923,7 @@ const folderOptions = computed(() => {
       walk(node.children || [], depth + 1);
     });
   };
-  walk(folderTree.value?.folders || [], 0);
+  walk(navigationFolderTree.value?.folders || [], 0);
   return result;
 });
 
@@ -912,14 +942,14 @@ const moveKnowledgeIntoFolder = async (ids: string[], folderPath: string) => {
   }
 };
 
-const handleFolderRename = async ({ from, to }: { from: string; to: string }) => {
+const handleFolderRename = async ({ from, to, datasource_id, unassigned }: { from: string; to: string; datasource_id?:string;unassigned?:boolean }) => {
   if (!kbId.value || !to || from === to) return;
   if (!canMoveFolderTo(from, to)) {
     MessagePlugin.warning(t('knowledgeBase.folderTree.renameInvalid'));
     return;
   }
   try {
-    const res: any = await renameKnowledgeFolder(kbId.value, from, to);
+    const res: any = await renameKnowledgeFolder(kbId.value, from, to, {datasource_id,unassigned});
     const movedCount = res?.data?.moved_count ?? 0;
     if (movedCount === 0) {
       MessagePlugin.warning(t('knowledgeBase.folderTree.renameFailed'));
@@ -928,9 +958,10 @@ const handleFolderRename = async ({ from, to }: { from: string; to: string }) =>
     }
     MessagePlugin.success(t('knowledgeBase.folderTree.renameSuccess'));
     // Follow the folder to its new path so the user stays where they were.
-    if (selectedFolderPath.value === from) {
+    const affectsSelection = !sourceGrouped.value || selectedSourceGroup.value === (unassigned ? '__unassigned__' : datasource_id);
+    if (affectsSelection && selectedFolderPath.value === from) {
       selectedFolderPath.value = to;
-    } else if (selectedFolderPath.value.startsWith(`${from}/`)) {
+    } else if (affectsSelection && selectedFolderPath.value.startsWith(`${from}/`)) {
       selectedFolderPath.value = to + selectedFolderPath.value.slice(from.length);
     }
     resetPage();
@@ -1128,6 +1159,7 @@ watch(() => kbId.value, (newKbId, oldKbId) => {
     uiStore.clearSelectedTagIds();
     folderTree.value = null;
     selectedFolderPath.value = ROOT_FOLDER_PATH;
+    selectedSourceGroup.value = null;
   }
   loadKnowledgeBaseInfo(newKbId);
 }, { immediate: true });
@@ -1166,7 +1198,7 @@ watch(docSearchKeyword, (newVal, oldVal) => {
 });
 
 // 监听文件类型筛选变化
-watch(selectedFileType, (newVal, oldVal) => {
+watch(() => selectedFileTypes.value.join(','), (newVal, oldVal) => {
   if (newVal === oldVal) return;
   if (kbId.value) {
     resetPage();
@@ -1184,7 +1216,7 @@ watch([selectedParseStatus, selectedSource, updatedTimeRange], () => {
 
 // 切换目录只改变列表范围，行为与其他筛选一致。浏览态与筛选态之间的切换由各筛选项
 // 自身的 watcher 触发刷新，这里不重复请求。
-watch(selectedFolderPath, () => {
+watch([selectedFolderPath, selectedSourceGroup, sourceGrouped], () => {
   if (!kbId.value || isFAQ.value) return;
   clearSelection();
   resetPage();
@@ -1196,6 +1228,7 @@ const handleFileUploaded = (event: CustomEvent) => {
   const uploadedKbId = event.detail.kbId;
   console.log('接收到文件上传事件，上传的知识库ID:', uploadedKbId, '当前知识库ID:', kbId.value);
   if (uploadedKbId && uploadedKbId === kbId.value && !isFAQ.value) {
+    if (sourceGrouped.value) selectedSourceGroup.value = '__unassigned__';
     // Mid-batch refreshes (settled === false) only bring new rows and folders
     // in, and are skipped once the user scrolled past the first page because
     // reloading resets the list to it. The batch's final event refreshes fully.
@@ -1278,6 +1311,9 @@ const tryAutoOpenDocument = async () => {
     if (detail && typeof detail === 'object') {
       target = { ...target, ...detail, id: targetId } as KnowledgeCard;
       selectedFolderPath.value = detail.folder_path || ROOT_FOLDER_PATH;
+      let metadata = detail.metadata || {};
+      if (typeof metadata === 'string') {try {metadata=JSON.parse(metadata)} catch {metadata={}}}
+      selectedSourceGroup.value = metadata && typeof metadata.datasource_id === 'string' ? (metadata.datasource_id || '__unassigned__') : '__unassigned__';
     }
   } catch (error) {
     // Keep the previous ID-only fallback: getCardDetails will surface the
@@ -2208,7 +2244,7 @@ const handleListAction = (
 
 // Clear selection on filter/tag/kb change to avoid acting on hidden items.
 watch(
-  [selectedTagIds, docSearchKeyword, selectedFileType, selectedParseStatus, selectedSource, updatedTimeRange, kbId],
+  [selectedTagIds, docSearchKeyword, selectedFileTypes, selectedParseStatus, selectedSource, updatedTimeRange, kbId],
   () => {
     clearSelection();
   },
@@ -2335,10 +2371,13 @@ const handleKBEditorSuccess = (kbIdValue: string) => {
 
       <template v-if="activeKbTab === 'documents' || !isWiki">
         <div class="knowledge-main">
-          <KbFolderTree v-if="showFolderTree && !folderTreeCollapsed" :tree="folderTree" :selected-path="selectedFolderPath"
+          <ResizableFolderPane v-if="showFolderTree && !folderTreeCollapsed" :label="$t('knowledgeBase.folderTree.title')">
+          <SourceGroupedFolderTree v-if="sourceGrouped && folderTree && !folderTreeCollapsed" :tree="folderTree" :selected-group="selectedSourceGroup" :selected-path="selectedFolderPath" :can-edit="canEdit" @select="handleSourceFolderSelect" @rename="handleFolderRename" @collapse="handleFolderTreeCollapsedChange(true)" />
+          <KbFolderTree v-else-if="showFolderTree && !folderTreeCollapsed" :tree="folderTree" :selected-path="selectedFolderPath"
             :loading="folderTreeLoading" :can-edit="canEdit" :root-label="kbInfo?.name"
             @select="handleFolderSelect" @update:collapsed="handleFolderTreeCollapsedChange"
             @rename="handleFolderRename" />
+          </ResizableFolderPane>
           <div class="tag-content">
             <div class="doc-card-area">
               <div class="doc-filter-bar">
@@ -2349,10 +2388,15 @@ const handleKBEditorSuccess = (kbIdValue: string) => {
                     @click="handleFolderTreeCollapsedChange(false)">
                     <t-icon name="view-list" size="16px" />
                   </button>
-                  <button v-if="folderBreadcrumbs.length" type="button" class="doc-folder-path__crumb" :title="kbInfo?.name" @click="handleFolderSelect('')">
+                  <button v-if="folderBreadcrumbs.length || (sourceGrouped && selectedSourceGroup !== null)" type="button" class="doc-folder-path__crumb" :title="kbInfo?.name" @click="sourceGrouped ? handleSourceFolderSelect({group:null,path:''}) : handleFolderSelect('')">
                     {{ kbInfo?.name }}
                   </button>
                   <span v-else class="doc-folder-path__crumb is-current" :title="kbInfo?.name" aria-current="page">{{ kbInfo?.name }}</span>
+                  <template v-if="sourceGrouped && selectedSourceGroup !== null">
+                    <t-icon name="chevron-right" class="doc-folder-path__sep" />
+                    <span v-if="!folderBreadcrumbs.length" class="doc-folder-path__crumb is-current">{{ activeSourceLabel }}</span>
+                    <button v-else type="button" class="doc-folder-path__crumb" @click="handleFolderSelect('')">{{ activeSourceLabel }}</button>
+                  </template>
                   <template v-for="(crumb, index) in folderBreadcrumbs" :key="crumb.path">
                     <t-icon name="chevron-right" class="doc-folder-path__sep" />
                     <span v-if="index === folderBreadcrumbs.length - 1" class="doc-folder-path__crumb is-current" :title="crumb.name" aria-current="page">{{ crumb.name }}</span>
@@ -2386,9 +2430,12 @@ const handleKBEditorSuccess = (kbIdValue: string) => {
                           <button type="button" :disabled="!activeFilterCount" @click="clearDocumentFilters">{{ $t('knowledgeBase.clearFilters') }}</button>
                         </header>
                         <div class="doc-filter-panel__fields">
+                          <div class="doc-filter-field doc-filter-field--folders">
+                            <t-checkbox v-model="showRightFolders">{{ $t('knowledgeBase.folderTree.showFolders') }}</t-checkbox>
+                          </div>
                           <div class="doc-filter-field">
                             <span>{{ $t('knowledgeBase.fileTypeFilter') }}</span>
-                            <t-select v-model="selectedFileType" :options="fileTypeOptions" :placeholder="$t('knowledgeBase.fileTypeFilter')" clearable />
+                            <t-select v-model="selectedFileTypes" :options="fileTypeOptions" :placeholder="$t('knowledgeBase.allFileTypes')" multiple filterable clearable :min-collapsed-num="2" />
                           </div>
                           <div class="doc-filter-field">
                             <span>{{ $t('knowledgeBase.parseStatusFilter') }}</span>
@@ -2491,7 +2538,7 @@ const handleKBEditorSuccess = (kbIdValue: string) => {
               </div>
               <div class="doc-scroll-container"
                 :class="{
-                  'is-empty': !cardList.length && !docListLoading,
+                  'is-empty': !cardList.length && !visibleContentFolders.length && !docListLoading,
                   'is-marquee-active': docMarqueeVisible,
                 }"
                 ref="knowledgeScroll" @scroll="handleScroll" @mousedown="onDocMarqueeMouseDown">
@@ -2519,8 +2566,9 @@ const handleKBEditorSuccess = (kbIdValue: string) => {
                     </div>
                   </div>
                 </div>
-                <template v-else-if="cardList.length && viewMode === 'grid'">
+                <template v-else-if="(cardList.length || visibleContentFolders.length) && viewMode === 'grid'">
                   <DocumentCardView :kb-id="kbId"
+                    :folders="visibleContentFolders" @navigate-folder="navigateContentFolder"
                     :items="cardList"
                     :folder-options="folderOptions"
                     :selected-ids="selectedIds"
@@ -2537,6 +2585,7 @@ const handleKBEditorSuccess = (kbIdValue: string) => {
                     :move-submitting="moveSubmitting"
                     :show-folder-path="showDocumentFolderPath"
                     @open="(item: any) => openKnowledgeItem(item)"
+                    @preview-image="(item: any) => previewImage = item"
                     @open-folder="handleFolderSelect"
                     @move-to-folder="(item: any, path: string) => moveKnowledgeIntoFolder([item.id], path)"
                     @toggle-checkbox="onCardGridCheckboxChange"
@@ -2549,8 +2598,9 @@ const handleKBEditorSuccess = (kbIdValue: string) => {
                     @update:move-mode="(mode: any) => moveMode = mode"
                   />
                 </template>
-                <template v-else-if="cardList.length && viewMode === 'list'">
+                <template v-else-if="(cardList.length || visibleContentFolders.length) && viewMode === 'list'">
                   <DocumentListView :kb-id="kbId" :items="cardList" :folder-options="folderOptions"
+                    :folders="visibleContentFolders" @navigate-folder="navigateContentFolder"
                     :selected-ids="selectedIds"
                     :can-edit="canEdit" :can-download="canDownloadKnowledge" :can-mutate-knowledge="canMutateKnowledge"
                     :trace-visible-ids="traceAvailableById"
@@ -2604,6 +2654,8 @@ const handleKBEditorSuccess = (kbIdValue: string) => {
         :canDownloadKB="canDownloadKnowledge" :kbId="kbId"
         @closeDoc="closeDoc" @getDoc="getDoc" @summaryStateChange="syncDocumentSummaryState">
       </DocContent>
+      <KnowledgeImageGallery v-if="previewImage" :key="previewImage.id" :kb-id="kbId" :initial="previewImage"
+        :filters="filterParams" :can-download="canDownloadKnowledge" @close="previewImage = null" />
     </div>
   </template>
   <template v-else>
@@ -2876,6 +2928,12 @@ const handleKBEditorSuccess = (kbIdValue: string) => {
     button:disabled { color: var(--td-text-color-disabled); cursor: default; }
   }
   &__fields { display: flex; flex-direction: column; gap: 10px; }
+  .doc-filter-field--folders {
+    display: flex !important;
+    grid-template-columns: none;
+    :deep(.t-checkbox) { flex: none; white-space: nowrap; }
+    :deep(.t-checkbox__label) { white-space: nowrap; }
+  }
   .doc-filter-field {
     display: grid; grid-template-columns: 72px minmax(0, 1fr); align-items: center; gap: 8px;
     > span { color: var(--td-text-color-secondary); font-size: var(--app-text-sm); }

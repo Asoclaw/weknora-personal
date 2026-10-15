@@ -88,6 +88,20 @@ func (v *KeywordsVectorHybridRetrieveEngineService) Index(ctx context.Context,
 func (v *KeywordsVectorHybridRetrieveEngineService) BatchIndex(ctx context.Context,
 	embedder embedding.Embedder, indexInfoList []*types.IndexInfo, retrieverTypes []types.RetrieverType,
 ) error {
+	// Do not retain every vector of a large workbook at once. Keep each
+	// embedding window bounded while preserving the original index IDs.
+	for start := 0; start < len(indexInfoList); start += 128 {
+		end := min(start+128, len(indexInfoList))
+		if err := v.batchIndexWindow(ctx, embedder, indexInfoList[start:end], retrieverTypes); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (v *KeywordsVectorHybridRetrieveEngineService) batchIndexWindow(ctx context.Context,
+	embedder embedding.Embedder, indexInfoList []*types.IndexInfo, retrieverTypes []types.RetrieverType,
+) error {
 	if len(indexInfoList) == 0 {
 		return nil
 	}

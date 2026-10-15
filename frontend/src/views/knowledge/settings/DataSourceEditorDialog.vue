@@ -207,7 +207,6 @@ const form = ref({
   },
   sync_schedule: '0 0 */6 * * *',
   sync_mode: 'incremental' as 'incremental' | 'full',
-  conflict_strategy: 'overwrite' as 'overwrite' | 'skip',
   sync_deletions: true,
 })
 
@@ -215,6 +214,15 @@ const form = ref({
 const resources = ref<Resource[]>([])
 const loadingResources = ref(false)
 const selectedResourceIds = ref<string[]>([])
+const resourceConnectionKey = ref('')
+const savedSelectionAncestors = ref(new Set<string>())
+let selectionAncestorRequest = 0
+const selectionAncestorCache = new Map<string, string[]>()
+
+function currentResourceConnectionKey() {
+  const settings = form.value.config.settings
+  return JSON.stringify([form.value.type, settings.site || 'personal', settings.base_url || '', settings.team_id || '', !!settings.insecure_tls])
+}
 const expandedResourceIds = ref(new Set<string>())
 // Lazy loading: parents whose children have already been fetched, and parents
 // currently being fetched. Used to load hierarchical sources (e.g. Feishu wiki)
@@ -407,7 +415,9 @@ const checkStates = computed(() => {
   // otherwise `unchecked`. Returns whether the subtree contains a checked node.
   function walk(node: Resource, ancestorChecked: boolean): boolean {
     const selfChecked = ancestorChecked || cover.has(node.external_id)
-    let descendantChecked = false
+    let descendantChecked = selectedResourceIds.value.length > 0 && savedSelectionAncestors.value.has(node.external_id)
+    // Every Tencent Docs selection belongs to its single provider root.
+    if (form.value.type === 'tencent_docs' && node.external_id === 'root' && cover.size > 0) descendantChecked = true
     for (const c of childrenMap.value.get(node.external_id) || []) {
       if (walk(c, selfChecked)) descendantChecked = true
     }
@@ -487,6 +497,9 @@ const visibleTree = computed(() => {
 
 // Connection test
 const testing = ref(false)
+const mockplusTestResources = ref<Resource[] | null>(null)
+const mockplusTeams = ref<Array<{id: string; name: string}>>([])
+const mockplusManualTeam = ref(false)
 const testResult = ref<'success' | 'error' | ''>('')
 const testErrorMsg = ref('')
 
@@ -527,6 +540,13 @@ interface ConnectorDef {
 }
 
 const connectorDefs = computed<ConnectorDef[]>(() => [
+  {
+    type: 'mockplus', available: true, docUrl: '', permissionDocUrl: '',
+    permissionPageUrl: '', requiredPermissions: [], fields: [
+      { key: 'username', labelKey: 'datasource.mockplus.username', placeholder: '' },
+      { key: 'password', labelKey: 'datasource.mockplus.password', placeholder: '', secret: true },
+    ],
+  },
   {
     type: 'tencent_docs',
     available: true,
@@ -735,6 +755,9 @@ watch(visible, async (v) => {
     return
   }
   step.value = isEdit.value ? 1 : 0
+  mockplusTestResources.value = null
+  mockplusTeams.value = []
+  mockplusManualTeam.value = false
   testResult.value = ''
   testErrorMsg.value = ''
   tempDsId.value = ''
@@ -743,6 +766,8 @@ watch(visible, async (v) => {
   resources.value = []
   selectedResourceIds.value = []
   expandedResourceIds.value = new Set()
+  savedSelectionAncestors.value = new Set()
+  selectionAncestorRequest++
   loadedChildrenIds.value = new Set()
   loadingChildrenIds.value = new Set()
   treeFullyLoaded.value = false
@@ -766,17 +791,16 @@ watch(visible, async (v) => {
       type: props.dataSource.type,
       config: {
         credentials: {},
-        resource_ids: editConfig.resource_ids || [],
+        resource_ids: [...(editConfig.resource_ids || [])],
         settings: props.dataSource.type === 'rss'
           ? hydrateRssFeedUrlsFromConfig(editConfig)
-          : (editConfig.settings || {}),
+          : { ...(editConfig.settings || {}) },
       },
       sync_schedule: props.dataSource.sync_schedule,
       sync_mode: props.dataSource.sync_mode,
-      conflict_strategy: props.dataSource.conflict_strategy,
       sync_deletions: props.dataSource.sync_deletions,
     }
-    selectedResourceIds.value = form.value.config?.resource_ids || []
+    selectedResourceIds.value = [...(form.value.config?.resource_ids || [])]
     if (isGitLabConnector(form.value.type)) {
       const savedProjects = Array.isArray(form.value.config.settings.projects) ? form.value.config.settings.projects : []
       gitlabProjects.value = savedProjects.map((project: any) => ({
@@ -806,15 +830,16 @@ watch(visible, async (v) => {
       config: { credentials: {}, resource_ids: [], settings: {} },
       sync_schedule: '0 0 */6 * * *',
       sync_mode: 'incremental',
-      conflict_strategy: 'overwrite',
       sync_deletions: true,
     }
   }
+  resourceConnectionKey.value = currentResourceConnectionKey()
 })
 
 watch(
   () => form.value.config.credentials,
   () => {
+    if (form.value.type === 'mockplus') { mockplusTestResources.value = null; mockplusTeams.value = []; mockplusManualTeam.value = false }
     if (needsConnectionTest()) {
       testResult.value = ''
       testErrorMsg.value = ''
@@ -822,6 +847,36 @@ watch(
   },
   { deep: true },
 )
+
+function mockplusSettingsChanged() {
+  if (resourceConnectionKey.value === currentResourceConnectionKey()) return
+  resourceConnectionKey.value = currentResourceConnectionKey()
+  mockplusTestResources.value = null
+  testResult.value = ''
+  testErrorMsg.value = ''
+  resources.value = []
+  selectedResourceIds.value = []
+  savedSelectionAncestors.value = new Set()
+  selectionAncestorRequest++
+}
+
+function tencentSiteChanged(value: string) {
+  if (resourceConnectionKey.value === currentResourceConnectionKey()) return
+  resourceConnectionKey.value = currentResourceConnectionKey()
+  form.value.config.credentials.site = value
+  testResult.value = ''
+  resources.value = []
+  selectedResourceIds.value = []
+}
+
+function mockplusAccountSettingsChanged() {
+  if (resourceConnectionKey.value === currentResourceConnectionKey()) return
+  mockplusSettingsChanged()
+  mockplusTeams.value = []
+  mockplusManualTeam.value = false
+  form.value.config.settings.team_id = ''
+  resourceConnectionKey.value = currentResourceConnectionKey()
+}
 
 watch(
   rssAuthHeaders,
@@ -850,6 +905,13 @@ function selectType(def: ConnectorDef) {
   form.value.type = def.type
   form.value.name = t(`datasource.connector.${def.type}`)
   form.value.config.credentials = def.type === "confluence" ? { edition: "server" } : {}
+  if (def.type === 'mockplus') {
+    form.value.config.settings = { base_url: '', team_id: '', insecure_tls: false, auth_mode: 'password' }
+    form.value.sync_schedule = '0 0 2 * * *'
+    form.value.sync_deletions = false
+    selectedResourceIds.value = []
+    form.value.config.resource_ids = []
+  }
   if (def.type === 'confluence') {
     form.value.config.settings = { ...form.value.config.settings, edition: 'server' }
   }
@@ -869,6 +931,13 @@ async function testConnection() {
   syncTencentSiteToCredentials()
   syncConfluencePublicFieldsToSettings()
   if (!validateRssFeedUrls()) return
+  if (form.value.type === 'mockplus') {
+    const settings = form.value.config.settings
+    if (!String(settings.base_url || '').trim()) {
+      MessagePlugin.warning(t('datasource.mockplus.connectionRequired'))
+      return
+    }
+  }
   if (!isEdit.value || !credentialsConfigured.value || replaceCredentialsMode.value) {
     const fields = displayedCredentialFields.value
     for (const f of fields) {
@@ -884,6 +953,7 @@ async function testConnection() {
   testResult.value = ''
   testErrorMsg.value = ''
   try {
+    let mockplusPreview: any
     // The main update endpoint ignores credentials. Only use the saved
     // connection when keeping its credentials; test replacements directly
     // without persisting them until the user saves the data source.
@@ -892,14 +962,30 @@ async function testConnection() {
         ...form.value,
         knowledge_base_id: props.kbId,
       } as any)
-      await validateConnection(tempDsId.value)
+      const result = await validateConnection(tempDsId.value)
+      if (form.value.type === 'mockplus') mockplusPreview = result?.data || result
     } else {
       const creds = { ...form.value.config.credentials }
       if (form.value.type === 'rss') {
         // validate-credentials is credentials-only; feed URLs live in settings.
         creds.feed_urls = form.value.config.settings.feed_urls
       }
-      await validateCredentials(form.value.type, creds)
+      if (form.value.type === 'mockplus') Object.assign(creds, form.value.config.settings)
+      const result = await validateCredentials(form.value.type, creds, form.value.type === 'mockplus')
+      if (form.value.type === 'mockplus') mockplusPreview = result?.data || result
+      if (form.value.type === 'mockplus') {
+        const preview = mockplusPreview
+        mockplusTeams.value = preview?.teams || []
+        mockplusManualTeam.value = !!preview?.team_discovery_error || mockplusTeams.value.length === 0
+        if (!form.value.config.settings.team_id && preview?.team_id) form.value.config.settings.team_id = preview.team_id
+        mockplusTestResources.value = form.value.config.settings.team_id ? (preview?.resources || null) : null
+      }
+    }
+    if (form.value.type === 'mockplus' && isEdit.value && !needsConnectionTest() && mockplusPreview) {
+      mockplusTeams.value = mockplusPreview.teams || []
+      mockplusManualTeam.value = !!mockplusPreview.team_discovery_error || mockplusTeams.value.length === 0
+      mockplusTestResources.value = mockplusPreview.resources || null
+      if (!form.value.config.settings.team_id && mockplusPreview.team_id) form.value.config.settings.team_id = mockplusPreview.team_id
     }
     testResult.value = 'success'
     MessagePlugin.success(t('datasource.testSuccess'))
@@ -931,7 +1017,8 @@ async function loadResources() {
       } as any)
     }
 
-    const res = await listResources(tempDsId.value)
+    const res = form.value.type === 'mockplus' && mockplusTestResources.value !== null
+      ? mockplusTestResources.value : await listResources(tempDsId.value)
     resources.value = res?.data || res || []
     // Any parent that already arrived with children (connectors returning the
     // full tree, e.g. Notion) needs no further lazy fetch.
@@ -951,17 +1038,46 @@ async function loadResources() {
         .filter(r => !r.parent_id && r.has_children && parentsWithChildren.has(r.external_id))
         .map(r => r.external_id),
     )
-    // When editing a lazily-loaded source, reveal pre-existing selections that
-    // live below the (not-yet-loaded) tree so they are visible and checked.
-    if (isEdit.value && !treeFullyLoaded.value) {
-      const loaded = new Set(resources.value.map(r => r.external_id))
-      const hidden = selectedResourceIds.value.filter(id => !loaded.has(id))
-      if (hidden.length > 0) void revealExistingSelections(hidden)
+    // Resolve selection ancestry separately from the bounded initial expansion.
+    if (form.value.type === 'tencent_docs' && selectedResourceIds.value.length > 0) {
+      void refreshSelectionAncestors()
+    }
+    if (['tencent_docs', 'mockplus'].includes(form.value.type)) {
+      loadingResources.value = false
+      await expandInitialResourceLevels()
     }
   } catch (e: any) {
     MessagePlugin.error(e?.message || e?.error || t('datasource.resourceLoadFailed'))
   }
   loadingResources.value = false
+}
+
+async function expandInitialResourceLevels() {
+  // Expand roots only. All child directories stay collapsed until clicked.
+  const roots = resources.value.filter(r => !r.parent_id && r.has_children)
+  expandedResourceIds.value = new Set(roots.map(r => r.external_id))
+  await Promise.all(roots.map(r => ensureChildrenLoaded(r.external_id)))
+}
+
+async function refreshSelectionAncestors() {
+  const request = ++selectionAncestorRequest
+  const sourceId = tempDsId.value
+  const selection = [...selectedResourceIds.value]
+  const cacheKey = JSON.stringify([sourceId, currentResourceConnectionKey(), [...selection].sort()])
+  const cached = selectionAncestorCache.get(cacheKey)
+  if (cached) { savedSelectionAncestors.value = new Set(cached); return }
+  try {
+    const res = await resolveResourceAncestors(sourceId, selection)
+    if (request !== selectionAncestorRequest || sourceId !== tempDsId.value ||
+        JSON.stringify(selection) !== JSON.stringify(selectedResourceIds.value)) return
+    const ancestors: string[] = res?.data?.ancestors || res?.ancestors || []
+    selectionAncestorCache.set(cacheKey, ancestors)
+    savedSelectionAncestors.value = new Set(ancestors)
+  } catch (error: any) {
+    if (request === selectionAncestorRequest) {
+      MessagePlugin.error(error?.message || t('datasource.resourceLoadFailed'))
+    }
+  }
 }
 
 // revealExistingSelections asks the backend which ancestors must be expanded to
@@ -1052,6 +1168,9 @@ function toggleResource(id: string) {
     uncheckResource(id, cover)
   }
   selectedResourceIds.value = [...cover]
+  savedSelectionAncestors.value = new Set()
+  selectionAncestorRequest++
+  if (form.value.type === 'tencent_docs' && cover.size > 0) void refreshSelectionAncestors()
 }
 
 function validateRssFeedUrls(): boolean {
@@ -1085,9 +1204,13 @@ function validateStep1Fields(): boolean {
 async function nextStep() {
   if (step.value === 1) {
     if (!validateStep1Fields()) return
-    if (needsConnectionTest() && testResult.value !== 'success') {
+    if ((needsConnectionTest() || form.value.type === 'mockplus') && testResult.value !== 'success') {
       await testConnection()
       if ((testResult.value as string) !== 'success') return
+    }
+    if (form.value.type === 'mockplus' && !String(form.value.config.settings.team_id || '').trim()) {
+      MessagePlugin.warning(t('datasource.mockplus.selectTeamRequired'))
+      return
     }
   }
   if (step.value === 2 && isDriveConnector(form.value.type)) {
@@ -1106,7 +1229,7 @@ async function nextStep() {
       return
     }
   }
-  if (step.value === 2 && form.value.type === 'tencent_docs' && selectedResourceIds.value.length === 0) {
+  if (step.value === 2 && ['tencent_docs', 'mockplus'].includes(form.value.type) && selectedResourceIds.value.length === 0) {
     MessagePlugin.warning(t('datasource.selectFolderRequired'))
     return
   }
@@ -1123,7 +1246,7 @@ async function nextStep() {
       return
     }
     if (isGitLabConnector(form.value.type)) return
-    loadResources()
+    await loadResources()
   }
 }
 
@@ -1155,7 +1278,7 @@ function buildConfigPayload(): Record<string, unknown> {
 // least one value, commit it to /credentials before the main PUT. Aborts
 // the whole submit on failure so we don't leave the row partially saved.
 async function commitCredentialsIfNeeded(dsId: string): Promise<boolean> {
-  if (!isEdit.value || !replaceCredentialsMode.value) return true
+  if (!(isEdit.value && replaceCredentialsMode.value) && !(form.value.type === 'mockplus' && !isEdit.value)) return true
   syncRssAuthHeadersToCredentials()
   syncTencentSiteToCredentials()
   syncConfluencePublicFieldsToSettings()
@@ -1164,7 +1287,9 @@ async function commitCredentialsIfNeeded(dsId: string): Promise<boolean> {
   )
   if (filled.length === 0) return true
   try {
-    await putDataSourceCredentials(dsId, Object.fromEntries(filled))
+    const credentials = Object.fromEntries(filled)
+    if (form.value.type === 'mockplus') Object.assign(credentials, form.value.config.settings)
+    await putDataSourceCredentials(dsId, credentials)
     credentialsConfigured.value = true
     replaceCredentialsMode.value = false
     form.value.config.credentials = {}
@@ -1250,7 +1375,8 @@ const selectedResourceCount = computed(() => {
   for (const state of checkStates.value.values()) {
     if (state === 'checked') count++
   }
-  return count
+  const loaded = new Set(resources.value.map(r => r.external_id))
+  return count + selectedResourceIds.value.filter(id => !loaded.has(id)).length
 })
 
 const hasExpandableNodes = computed(() => resources.value.some(r => r.has_children))
@@ -1511,17 +1637,31 @@ const drawerConfirmText = computed(() => {
           <t-select
             v-model="form.config.settings.site"
             :disabled="isEdit && credentialsConfigured && !replaceCredentialsMode"
-            @change="(value: string) => {
-              form.config.credentials.site = value
-              testResult = ''
-              resources = []
-              selectedResourceIds = []
-            }"
+            @change="tencentSiteChanged"
           >
             <t-option value="personal" :label="t('datasource.sitePersonal')" />
             <t-option value="saas" :label="t('datasource.siteSaaS')" />
           </t-select>
         </div>
+        <template v-if="form.type === 'mockplus'">
+          <div class="form-item">
+            <label class="form-label required">{{ t('datasource.mockplus.serviceUrl') }}</label>
+            <t-input v-model="form.config.settings.base_url" :aria-label="t('datasource.mockplus.serviceUrl')" @change="mockplusAccountSettingsChanged" />
+          </div>
+          <div v-if="mockplusTeams.length || mockplusManualTeam" class="form-item">
+            <label v-if="!mockplusTeams.length" class="form-label required">{{ t('datasource.mockplus.teamId') }}</label>
+            <label v-else class="form-label required">{{ t('datasource.mockplus.team') }}</label>
+            <t-select v-if="mockplusTeams.length" v-model="form.config.settings.team_id" :aria-label="t('datasource.mockplus.team')" @change="mockplusSettingsChanged">
+              <t-option v-for="team in mockplusTeams" :key="team.id" :value="team.id" :label="team.name" />
+            </t-select>
+            <t-input v-else v-model="form.config.settings.team_id" :aria-label="t('datasource.mockplus.teamId')" @change="mockplusSettingsChanged" />
+            <p v-if="mockplusManualTeam" class="form-desc">{{ t('datasource.mockplus.teamDiscoveryFallback') }}</p>
+          </div>
+          <div class="form-item">
+            <t-checkbox v-model="form.config.settings.insecure_tls" @change="mockplusSettingsChanged">{{ t('datasource.mockplus.selfSigned') }}</t-checkbox>
+          </div>
+          <p class="form-desc">{{ t('datasource.mockplus.multimodalRequired') }}</p>
+        </template>
       </section>
 
       <section v-if="form.type === 'rss'" class="setting-drawer__section">
@@ -1709,7 +1849,6 @@ const drawerConfirmText = computed(() => {
       </template>
       <template v-else>
       <h4 class="setting-drawer__section-title">{{ t('datasource.step.resources') }}</h4>
-      <p class="ds-resource-hint">{{ t('datasource.resourceHint') }}</p>
 
       <!-- Drive (云盘) root input: shown alongside the tree (not as a switch).
            The user supplies a folder_token (or a Drive folder URL) and clicks
@@ -1904,32 +2043,6 @@ const drawerConfirmText = computed(() => {
               @click="form.sync_mode = 'full'"
             >
               {{ t('datasource.syncMode.full') }}
-            </button>
-          </div>
-        </div>
-
-        <div class="form-item form-item--flat">
-          <label class="form-label">{{ t('datasource.conflictLabel') }}</label>
-          <div class="option-group" role="radiogroup" :aria-label="t('datasource.conflictLabel')">
-            <button
-              type="button"
-              class="option-pill"
-              :class="{ 'is-active': form.conflict_strategy === 'overwrite' }"
-              role="radio"
-              :aria-checked="form.conflict_strategy === 'overwrite'"
-              @click="form.conflict_strategy = 'overwrite'"
-            >
-              {{ t('datasource.conflict.overwrite') }}
-            </button>
-            <button
-              type="button"
-              class="option-pill"
-              :class="{ 'is-active': form.conflict_strategy === 'skip' }"
-              role="radio"
-              :aria-checked="form.conflict_strategy === 'skip'"
-              @click="form.conflict_strategy = 'skip'"
-            >
-              {{ t('datasource.conflict.skip') }}
             </button>
           </div>
         </div>

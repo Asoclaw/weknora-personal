@@ -138,7 +138,8 @@ test('every document scroll target is tabbable and key events keep native behavi
   for (const tag of template.matchAll(/<[^>]+ref="(?:previewContent|docxContainer)"[^>]*>/g)) {
     assert.ok(/tabindex="0"|\bcontrols\b/.test(tag[0]), tag[0])
   }
-  assert.doesNotMatch(template, /@key(?:down|up)/)
+  // Only image activation is delegated; scroll containers retain native keys.
+  assert.doesNotMatch(template, /@key(?:down|up)\.[^=]*prevent/)
   assert.match(template, /sandbox="allow-scripts"/)
   assert.deepEqual(compileTemplate({ source: template, filename: 'document-preview.vue', id: 'preview' }).errors, [])
 })

@@ -400,7 +400,7 @@ func isSSRFSafeURL(rawURL string) (bool, string) {
 
 	// Perform DNS resolution to check the resolved IP
 	// This prevents DNS rebinding attacks where a domain resolves to internal IPs
-	ips, err := net.LookupIP(hostname)
+	ips, err := lookupIPsForSecurity(hostname)
 	if err != nil {
 		return false, fmt.Sprintf("DNS resolution failed for hostname %s: cannot verify if it resolves to safe IP", hostname)
 	}
@@ -874,7 +874,7 @@ func SSRFSafeDialContext(ctx context.Context, network, addr string) (net.Conn, e
 	// those exact IPs. Dialing the original hostname here would make the
 	// standard dialer resolve it a second time, leaving a DNS-rebinding window
 	// between validation and connection establishment.
-	ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	ips, err := lookupIPAddrWithRetry(ctx, host, net.DefaultResolver.LookupIPAddr, 250*time.Millisecond)
 	if err != nil {
 		return nil, fmt.Errorf("DNS resolution failed for %s: %w", host, err)
 	}

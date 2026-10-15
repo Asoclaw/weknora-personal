@@ -873,7 +873,7 @@ export default {
     siteLabel: '腾讯文档站点',
     sitePersonal: '个人版（docs.qq.com）',
     siteSaaS: '企业版（saas.docs.qq.com）',
-    selectFolderRequired: '请选择至少一个文件夹',
+    selectFolderRequired: '请选择至少一个文件夹或文件',
     untitled: '无标题',
     resourceLoadFailed: '加载资源列表失败',
     noResources: '未找到可同步的知识库空间',
@@ -888,7 +888,6 @@ export default {
     guideStep3_notion: '搜索并选择你的集成应用（Integration），然后回到这里点重新加载',
     permissionDocLink: '查看飞书知识库权限配置文档',
     syncScheduleLabel: '同步频率',
-    conflictLabel: '冲突策略',
     syncDeletions: '同步删除（源端删除时同步删除知识库中的条目）',
     createAndSync: '创建并立即同步',
     createAndSyncSuccess: '数据源创建成功，同步任务已提交',
@@ -1007,7 +1006,8 @@ export default {
       authHeadersHint: '用于访问私有订阅源，每行一个，格式为「名称: 值」，例如 Authorization: Bearer xxxx'
     },
     connectorDesc: {
-      tencent_docs: '同步选定文件夹内可读取的腾讯文档',
+      mockplus: '同步项目当前画板图片',
+      tencent_docs: '同步选定文件或文件夹内可读取的腾讯文档',
       feishu: '同步飞书知识库中的文档、表格、文件',
       lark: '同步 Lark 知识库中的文档、表格、文件（飞书国际版）',
       feishu_drive: "同步飞书云盘文件夹中的文档、表格、文件",
@@ -1020,7 +1020,22 @@ export default {
       rss: '同步 RSS / Atom 订阅源中的文章',
       gitlab: '同步 GitLab 项目中的文件'
     },
+    mockplus: {
+      team: '团队',
+      selectTeamRequired: '请选择团队',
+      teamDiscoveryFallback: '自动获取团队失败，请填写团队 ID',
+
+      username: '账号／邮箱',
+      password: '密码',
+      connectionRequired: '请填写服务地址',
+
+      serviceUrl: '服务地址',
+      teamId: '团队 ID',
+      selfSigned: '允许内网自签证书',
+      multimodalRequired: '图片检索与问答需要知识库开启多模态解析。',
+    },
     connector: {
+      mockplus: '摹客',
       tencent_docs: '腾讯文档',
       feishu: '飞书',
       lark: 'Lark（飞书国际版）',
@@ -1065,10 +1080,6 @@ export default {
       resources: '选择范围',
       strategy: '同步策略'
     },
-    conflict: {
-      overwrite: '覆盖更新',
-      skip: '跳过已存在'
-    },
     status: {
       active: '已连接',
       paused: '已暂停',
@@ -1092,6 +1103,16 @@ export default {
       loadNotFoundHint: "folder_token 不存在或已删除，请确认从飞书云盘文件夹 URL 复制的 token 正确。",
     },
     syncError: {
+      tencent_docs_archive_unsupported: '压缩包暂不支持',
+      tencent_docs_empty_document: '空文档，已跳过',
+      tencent_docs_unsupported_format: '该导出格式暂不支持解析',
+      tencent_docs_permission_denied: '没有导出或下载权限',
+      tencent_docs_export_failed: '导出失败，请稍后重试',
+      tencent_docs_export_service_error: '腾讯导出服务异常（{code}）',
+      tencent_docs_file_too_large: '文件超过当前 {code} MB 大小限制',
+      tencent_docs_download_failed: '文件下载失败',
+      tencent_docs_invalid_file: '下载文件格式无效或不匹配',
+      tencent_docs_metadata_unavailable: '无法读取文件信息',
       dingtalk_document_failed: '无法读取钉钉文档，请检查访问权限后重试同步。',
       dingtalk_resource_failed: '钉钉资源不可用，请检查访问权限和已选资源后重试。',
       deletion_lookup_failed: '删除前查找文档失败，请查看服务器日志',
@@ -1885,6 +1906,8 @@ export default {
     }
   },
   preview: {
+    imagePrevious: '上一张',
+    imageNext: '下一张',
     tab: '预览',
     loading: '正在加载文档预览...',
     loadFailed: '加载文档预览失败',
@@ -3946,8 +3969,8 @@ export default {
         vllmDescription: '用于多模态理解的视觉语言模型（必选）',
         vllmPlaceholder: '请选择 VLLM 模型（必选）',
         descriptionLanguageLabel: '图片描述语言',
-        descriptionLanguageDescription: '留空时跟随文档语言；不再强制使用中文',
-        descriptionLanguageAuto: '自动跟随文档语言',
+        descriptionLanguageDescription: '留空时跟随文件语言；不再强制使用中文',
+        descriptionLanguageAuto: '自动跟随文件语言',
         customInstructionsLabel: '图片解析要求',
         customInstructionsDescription: '补充需要重点识别的视觉信息，OCR 和 Markdown 格式协议保持不变',
         customInstructionsPlaceholder: '例如：重点识别设备铭牌、型号、告警代码和表格中的单位…'
@@ -3959,16 +3982,16 @@ export default {
       },
       questionGeneration: {
         label: 'AI 问题生成',
-        description: '解析文档时调用大模型为每个分块生成相关问题，提高检索召回率。启用后会增加文档解析耗时。',
+        description: '解析文件时调用大模型为每个分块生成相关问题，提高检索召回率。启用后会增加文件解析耗时。',
         countLabel: '生成问题数量',
-        countDescription: '每个文档分块生成的问题数量（1-10）',
+        countDescription: '每个文件分块生成的问题数量（1-10）',
     instructionsLabel: '问题生成要求',
         instructionsDescription: '指定问题面向的人群、场景和表达方式，系统仍维护稳定输出格式',
         instructionsPlaceholder: '例如：生成客服用户常问的自然语言问题，避免考试题式表达…'
       },
       profile: {
         label: '自动生成知识库描述',
-        description: '文档新增、删除或摘要更新后，从文档画像聚合自动生成知识库描述。聚合本身不调用模型，仅当聚合结果变化时才发起一次小模型调用。',
+        description: '文件新增、删除或摘要更新后，从文件画像聚合自动生成知识库描述。聚合本身不调用模型，仅当聚合结果变化时才发起一次小模型调用。',
         modelLabel: '生成模型',
         modelDescription: '留空时使用知识库摘要模型。',
         modelPlaceholder: '请选择生成模型',
@@ -3978,14 +4001,14 @@ export default {
       },
       autoTag: {
         label: '自动关联标签',
-        description: '文档解析完成后，从当前知识库已有标签中选择合适标签自动关联。不会创建或删除标签，并会增加一次模型调用。',
+        description: '文件解析完成后，从当前知识库已有标签中选择合适标签自动关联。不会创建或删除标签，并会增加一次模型调用。',
         modelLabel: '分类模型',
         modelDescription: '留空时使用知识库摘要模型。',
         modelPlaceholder: '请选择分类模型',
-        maxTagsLabel: '单篇文档最多标签数',
-        maxTagsDescription: '每篇文档最多自动关联 1-10 个已有标签。',
-        skipIfTaggedLabel: '跳过已有标签的文档',
-        skipIfTaggedDescription: '开启后，上传时已手动设置标签的文档不再自动打标签，避免覆盖人工分类意图。'
+        maxTagsLabel: '单篇文件最多标签数',
+        maxTagsDescription: '每篇文件最多自动关联 1-10 个已有标签。',
+        skipIfTaggedLabel: '跳过已有标签的文件',
+        skipIfTaggedDescription: '开启后，上传时已手动设置标签的文件不再自动打标签，避免覆盖人工分类意图。'
       }
     },
     asr: {
@@ -4006,9 +4029,9 @@ export default {
     },
     chunking: {
       title: '分块设置',
-      description: '控制上传文档在嵌入前的切分方式。默认值适用于大多数场景，仅在检索质量异常时调整。',
+      description: '控制上传文件在嵌入前的切分方式。默认值适用于大多数场景，仅在检索质量异常时调整。',
       sizeLabel: '分块大小',
-      sizeDescription: '每个分块的最大字符数（100-4000）。默认 512 ≈ 中文 300 tokens / 英文 100-130 tokens。FAQ 用 200-400，叙述性长文档用 1000-2000。',
+      sizeDescription: '每个分块的最大字符数（100-4000）。默认 512 ≈ 中文 300 tokens / 英文 100-130 tokens。FAQ 用 200-400，叙述性长文件用 1000-2000。',
       characters: '字符',
       overlapLabel: '分块重叠',
       overlapDescription: '相邻分块之间共享的字符数（0-500）。默认 80 ≈ 分块大小的 15%，符合当前研究推荐。FAQ/结构化数据用 0，长篇叙述用 150-200。',
@@ -4016,13 +4039,13 @@ export default {
       separatorsDescription: '切分时优先使用的字符或字符串。优先级高的分隔符先尝试；默认顺序优先段落 → 句子 → 标点。',
       separatorsPlaceholder: '选择或自定义分隔符',
       parentChildLabel: '父子分块',
-      parentChildDescription: '两级分块：小的子块用于向量匹配（精准命中），大的父块返回给 LLM（更丰富上下文）。建议用于长文档（>10 页）；短 FAQ 可关闭以节省存储。',
+      parentChildDescription: '两级分块：小的子块用于向量匹配（精准命中），大的父块返回给 LLM（更丰富上下文）。建议用于长文件（>10 页）；短 FAQ 可关闭以节省存储。',
       parentChunkSizeLabel: '父块大小',
       parentChunkSizeDescription: '返回给 LLM 的上下文块大小（512-8192）。默认 4096 ≈ 1000 英文 tokens，适合所有现代 LLM 上下文窗口。',
       childChunkSizeLabel: '子块大小',
       childChunkSizeDescription: '用于向量匹配的嵌入块大小（64-2048）。默认 384 ≈ 80 tokens，是 sentence-transformer / BGE 类嵌入模型的最佳点。',
       strategyLabel: '分块策略',
-      strategyDescription: '选择文档的分块方式。自动模式会分析每个文档的结构并选择最佳策略。',
+      strategyDescription: '选择文件的分块方式。自动模式会分析每个文件的结构并选择最佳策略。',
       strategyPlaceholder: '选择分块策略（不填则按长度切分）',
       overlapWarning: '重叠相对于分块大小较大——分块之间会共享大部分内容。',
       advancedLabel: '高级选项',
@@ -4057,7 +4080,7 @@ export default {
           languages: '语言'
         },
         samples: {
-          markdown: 'Markdown 文档',
+          markdown: 'Markdown 文件',
           faq: 'FAQ 列表',
           chapter: 'PDF 章节',
           plain: '纯文本'
@@ -4079,11 +4102,11 @@ export default {
         },
         heading: {
           label: '按标题切分',
-          tooltip: '在 Markdown 标题（#、##、###）边界处切分，每块自动带上所在标题路径。适合结构清晰的 Markdown 文档。'
+          tooltip: '在 Markdown 标题（#、##、###）边界处切分，每块自动带上所在标题路径。适合结构清晰的 Markdown 文件。'
         },
         auto: {
           label: '自动',
-          tooltip: '文档分析器根据内容结构自动在「按标题切分」「结构感知」「按长度切分」之间选择。'
+          tooltip: '文件分析器根据内容结构自动在「按标题切分」「结构感知」「按长度切分」之间选择。'
         }
       },
       separators: {
@@ -4210,8 +4233,8 @@ export default {
       }
     },
     document: {
-      title: '文档',
-      subtitle: '支持点击或拖拽上传，多格式文档自动解析并智能分块，快速构建可检索的知识库'
+      title: '文件',
+      subtitle: '支持点击或拖拽上传，多格式文件自动解析并智能分块，快速构建可检索的知识库'
     },
     messages: {
       loadModelsFailed: '加载模型列表失败',
@@ -4315,7 +4338,7 @@ export default {
       viewInGraph: '在图谱中查看',
       editingBadge: '编辑中',
       pageActions: '页面操作',
-      tabDocuments: '文档',
+      tabDocuments: '文件',
       tabGraph: '图谱',
       tabGraphTip: 'Wiki 页面之间的引用关系图（即页面链接图谱），与「知识库设置 → 知识图谱」中基于 LLM 抽取的实体-关系图谱不是同一个概念',
       searchPlaceholder: '搜索 Wiki 页面...',
@@ -4353,20 +4376,20 @@ export default {
       filterComparison: '对比',
       legendFamiliar: '你常用的资料',
       emptyTitle: '暂无 Wiki 页面',
-      emptyDesc: '上传文档并启用 Wiki 后将自动生成知识页面',
+      emptyDesc: '上传文件并启用 Wiki 后将自动生成知识页面',
       selectPageHint: '从左侧选择一个页面查看内容',
       version: 'v{ver}',
       aliases: '别名',
       linkedFrom: '被链接',
-      sources: '来源文档',
+      sources: '来源文件',
       graphEmpty: '加载图谱中...',
       fitView: '适应屏幕',
       indexTitle: '索引',
       loading: '加载中…',
       loadMoreShort: '加载更多',
       indexOverviewTag: '分类目录',
-      indexEmpty: '暂无 Wiki 页面，请先上传文档',
-      graphNoData: '暂无图谱数据，请先上传文档（这里展示的是 Wiki 页面之间的链接关系，与「知识库设置 → 知识图谱」中的实体-关系图谱不同）',
+      indexEmpty: '暂无 Wiki 页面，请先上传文件',
+      graphNoData: '暂无图谱数据，请先上传文件（这里展示的是 Wiki 页面之间的链接关系，与「知识库设置 → 知识图谱」中的实体-关系图谱不同）',
       showArrows: '显示箭头',
       hideArrows: '隐藏箭头',
       expandNeighbors: '展开邻居',
@@ -4425,9 +4448,9 @@ export default {
     },
     indexing: {
       title: '索引策略',
-      description: '配置文档上传后的处理管道，可以独立开启或关闭每种索引方式',
+      description: '配置文件上传后的处理管道，可以独立开启或关闭每种索引方式',
       searchTitle: 'RAG 检索',
-      searchDesc: '对文档进行分块、向量化和关键词索引，支持混合检索',
+      searchDesc: '对文件进行分块、向量化和关键词索引，支持混合检索',
       wikiTitle: 'Wiki 知识库',
       wikiDesc: '自动生成互相关联的 Wiki 知识页面，构建结构化知识体系',
       graphTitle: '知识图谱',
@@ -4436,8 +4459,8 @@ export default {
       embeddingRequired: 'RAG 检索需要配置 Embedding 模型',
       lockedTip: '知识库已有内容，索引策略暂不支持调整。如需变更，请先清空知识库。',
       rebuildConfirmTitle: '重建索引',
-      rebuildConfirmBody: '索引策略已变更，是否对已有的 {count} 篇文档重新处理？这可能需要一些时间。',
-      rebuildSuccess: '已提交重建任务，共 {count} 篇文档',
+      rebuildConfirmBody: '索引策略已变更，是否对已有的 {count} 篇文件重新处理？这可能需要一些时间。',
+      rebuildSuccess: '已提交重建任务，共 {count} 篇文件',
       rebuildSkip: '稍后可在数据源中手动触发重建'
     },
     wiki: {
@@ -4452,11 +4475,11 @@ export default {
       extractionInstructionsLabel: 'Wiki 提取重点',
       extractionInstructionsTip: '说明应重点识别的领域实体和概念，不会替换系统的 JSON 与引用协议。',
       extractionInstructionsPlaceholder: '例如：重点识别产品、版本、组织、负责人和关键技术概念…',
-      extractionGranularityTip: '控制每篇文档抽取的 Wiki 实体/概念数量。粒度越细，索引越聚焦；粒度越粗，索引越详尽',
+      extractionGranularityTip: '控制每篇文件抽取的 Wiki 实体/概念数量。粒度越细，索引越聚焦；粒度越粗，索引越详尽',
       granularityFocused: '聚焦',
       granularityStandard: '标准',
       granularityExhaustive: '详尽',
-      granularityFocusedHint: '只抽取文档的主角（如简历 → 人物和项目）。最干净，但可能漏掉次要实体。',
+      granularityFocusedHint: '只抽取文件的主角（如简历 → 人物和项目）。最干净，但可能漏掉次要实体。',
       granularityStandardHint: '抽取主角 + 被详细描述的次要实体/概念。跳过一带而过的通用名词。适合大多数场景。',
       granularityExhaustiveHint: '抽取所有可识别的命名实体与概念，包括一带而过的技术栈。适合将知识库当作术语表使用。'
     },
@@ -4466,18 +4489,18 @@ export default {
       kbId: '知识库 ID',
       kbIdDesc: 'API 集成时可使用此 ID 指定知识库',
       typeLabel: '知识库类型',
-      typeDocument: '文档',
+      typeDocument: '文件',
       typeFAQ: '问答',
-      typeDescription: 'FAQ 类型适合结构化问答数据；文档型支持文件解析与分块；Wiki 类型由 LLM 自动构建互链知识页面。',
+      typeDescription: 'FAQ 类型适合结构化问答数据；文件型支持文件解析与分块；Wiki 类型由 LLM 自动构建互链知识页面。',
       nameLabel: '知识库名称',
       namePlaceholder: '请输入知识库名称',
       descriptionLabel: '知识库描述',
       descriptionPlaceholder: '请输入知识库描述（可选）',
       profile: {
         title: 'AI 生成描述',
-        hint: '由文档画像聚合生成，不会覆盖上方手写描述；智能体会同时读取两者来判断问题是否该在本知识库中检索。',
-        empty: '尚未生成。上传文档并生成摘要后，点击下方按钮即可生成。',
-        noDocuments: '知识库中还没有已解析完成的文档。',
+        hint: '由文件画像聚合生成，不会覆盖上方手写描述；智能体会同时读取两者来判断问题是否该在本知识库中检索。',
+        empty: '尚未生成。上传文件并生成摘要后，点击下方按钮即可生成。',
+        noDocuments: '知识库中还没有已解析完成的文件。',
         questions: '典型问题',
         generate: '生成 AI 描述',
         regenerate: '重新生成',
@@ -4486,7 +4509,7 @@ export default {
         generateFailed: 'AI 描述生成失败',
         adopted: '已填入知识库描述，保存后生效',
         failed: '上次生成失败：{error}',
-        generatedAt: '生成于 {time} · 基于 {count} 篇文档'
+        generatedAt: '生成于 {time} · 基于 {count} 篇文件'
       }
     },
     errors: {
@@ -6696,12 +6719,12 @@ export default {
     }
   },
   uploadConfirm: {
-    documentSummary: "文档摘要",
-    documentSummaryDescription: "为本次导入的文档选择是否自动生成摘要。",
-    generateSummary: "生成文档摘要",
-    generateSummaryHint: "默认开启。关闭后跳过摘要生成，文档解析、索引及其他处理步骤仍按配置执行。",
+    documentSummary: "文件摘要",
+    documentSummaryDescription: "为本次导入的文件选择是否自动生成摘要。",
+    generateSummary: "生成文件摘要",
+    generateSummaryHint: "默认开启。关闭后跳过摘要生成，文件解析、索引及其他处理步骤仍按配置执行。",
 
-    title: '上传文档确认',
+    title: '上传文件确认',
     parseConfig: '解析配置',
     configNav: '解析配置导航',
     navParserDefault: '默认',
@@ -6719,11 +6742,11 @@ export default {
     summaryTagsCount: '{count} 个标签',
     confirm: '确认上传并解析',
     cancel: '取消',
-    tabTags: '文档标签',
-    tagsDescription: '为本批次导入的所有文档选择标签，可多选',
+    tabTags: '文件标签',
+    tagsDescription: '为本批次导入的所有文件选择标签，可多选',
     tagsPlaceholder: '请选择标签（可多选）',
     tagsEmpty: '当前知识库暂无标签，可上传后在标签管理中创建',
-    tagsLoadFailed: '标签加载失败，可稍后在文档列表中设置',
+    tagsLoadFailed: '标签加载失败，可稍后在文件列表中设置',
     noItems: '请至少添加一个文件或 URL',
     urlItemLabel: 'URL',
     urlAdded: '已添加 URL',
@@ -6747,7 +6770,7 @@ export default {
     confirmManual: '确认发布并解析',
     titleReparse: '重新解析确认',
     confirmReparse: '确认并重新解析',
-    reparseSource: '待重新解析文档',
+    reparseSource: '待重新解析文件',
     reparseHint: '将沿用上次解析的配置，可在此调整',
     manualCharCount: '{count} 个字符',
     pdfForceScanned: {
@@ -6756,8 +6779,15 @@ export default {
     }
   },
   knowledgeBase: {
+    sourceGroups: { all: '全部资料', other: '其他资料', removed: '已移除数据源' },
+
+    originalSourceLink: '原文链接',
+    openOriginalDocument: '打开原文件',
+    copySourceLink: '复制链接',
+    copySourceLinkFailed: '复制失败，请手动选中文本',
+    sourceLinkUnavailable: '未获取到原文链接',
     tagAddAction: '添加标签',
-    documentCount: '{count} 个文档',
+    documentCount: '{count} 个文件',
     filters: '筛选',
     clearFilters: '清除筛选',
 
@@ -6784,16 +6814,17 @@ export default {
     tagUpdateSuccess: '标签已更新',
     tagEditDialogHeading: '编辑标签',
     folderTree: {
-      totalDocuments: '共 {count} 个文档',
-      countHint: '当前目录 {direct} 个文档，含子目录共 {total} 个',
-      filteredCount: '匹配 {count} 个文档',
+      showFolders: '显示文件夹',
+      totalDocuments: '共 {count} 个文件',
+      countHint: '直属文件：{direct}',
+      filteredCount: '匹配 {count} 个文件',
       title: '目录',
       rootRow: '根目录',
-      rootRowTip: '知识库根目录，未归入子文件夹的文档在此',
-      folderCardCount: '{count} 个文档',
+      rootRowTip: '知识库根目录，未归入子文件夹的文件在此',
+      folderCardCount: '{count} 个文件',
       searchingSubtree: '（含子目录）',
-      emptyFolder: '这个文件夹里还没有文档',
-      emptySearch: '没有匹配的文档',
+      emptyFolder: '这个文件夹里还没有文件',
+      emptySearch: '没有匹配的文件',
       collapse: '收起目录',
       expand: '展开目录',
       collapseFolder: '收起该文件夹',
@@ -6814,7 +6845,7 @@ export default {
       newFolderHint: '回车创建并移动',
       newFolderHintRoot: '将在根目录下创建',
       newFolderHintUnder: '将在「{folder}」下创建',
-      success: '已移动 {count} 个文档',
+      success: '已移动 {count} 个文件',
       failed: '移动失败',
       duplicate: '该目录已存在',
     },
@@ -6825,13 +6856,13 @@ export default {
     tagManageDescription: '新建、重命名或删除知识库标签',
     tagManageLink: '管理标签…',
     tagManageListSection: '标签列表',
-    tagManageDocCount: '{count} 个文档',
+    tagManageDocCount: '{count} 个文件',
     tagManageFaqCount: '{count} 个 FAQ',
     tagPickerSelected: '已选择',
     tagPickerUnselected: '未选择',
     tagSelectedCount: '已选 {count} 个标签',
     tagPickerSearch: "搜索或新建标签",
-    tagPickerInUse: "此标签仍被使用，请先移除文档上的关联再删除",
+    tagPickerInUse: "此标签仍被使用，请先移除文件上的关联再删除",
     tagPickerDeleteConfirm: "确定删除标签“{name}”？",
     untagged: '无标签',
     tagCreateAction: '新建标签',
@@ -6840,7 +6871,7 @@ export default {
     tagNameRequired: '请先输入标签名称',
     tagCreateSuccess: '已创建标签',
     tagEditSuccess: '标签已更新',
-    tagDeleteDescDoc: '确定删除标签"{name}"？该标签下的所有文档将被一并删除',
+    tagDeleteDescDoc: '确定删除标签"{name}"？该标签下的所有文件将被一并删除',
     tagDeleteSuccess: '标签已删除',
     tagEditAction: '重命名',
     tagDeleteAction: '删除',
@@ -6849,10 +6880,10 @@ export default {
     tagPlaceholder: '请选择标签',
     noTags: '暂无标签',
     videosFilteredNoVLM: '已跳过 {count} 个视频文件（暂不支持视频上传）',
-    unsupportedTypesHint: '部分文档类型（{types}）暂无可用解析引擎，上传后将无法解析',
+    unsupportedTypesHint: '部分文件类型（{types}）暂无可用解析引擎，上传后将无法解析',
     goToParserSettings: '前往配置',
     importURL: '导入网页',
-    addDocument: '添加文档',
+    addDocument: '添加文件',
     importURLTitle: '导入网页',
     urlRequired: '请输入URL',
     invalidURL: '请输入有效的URL',
@@ -6882,13 +6913,14 @@ export default {
     channelYuque: '语雀',
     channelGitLab: 'GitLab',
     channelIma: '腾讯 IMA',
+    channelMockplus: '摹客',
     channelUpload: '上传',
     channelManual: '手动',
     channelUrl: '网页',
     channelUnknown: '未知',
     urlSource: '来源网址',
     webContent: '网页内容',
-    documentContent: '文档内容',
+    documentContent: '文件内容',
     importTime: '导入时间',
     createTime: '创建时间',
     createdAt: '创建',
@@ -6905,7 +6937,7 @@ export default {
     confirmDeleteQuestion: '确定要删除这个问题吗？删除后将同时移除对应的向量索引。',
     legacyQuestionCannotDelete: '旧格式问题无法删除，请重新生成问题',
     customMetadata: '自定义元数据',
-    metadataCapabilityHint: '用于文档总结，并在文档被召回后作为文档级上下文辅助回答；不会参与索引或影响召回排序',
+    metadataCapabilityHint: '用于文件总结，并在文件被召回后作为文件级上下文辅助回答；不会参与索引或影响召回排序',
     noCustomMetadata: '暂无自定义元数据',
     addMetadataField: '添加元数据字段',
     metadataKeyPlaceholder: '字段名',
@@ -6919,7 +6951,7 @@ export default {
     metadataNumberRequired: '元数据字段 {key} 必须是有效数字',
     regenerateSummary: '重新生成摘要',
     generateSummary: '生成摘要',
-    noDocumentSummary: '暂无文档摘要',
+    noDocumentSummary: '暂无文件摘要',
     summaryRefreshed: '摘要已更新',
     summaryRefreshQueued: '摘要刷新已提交，完成后会自动更新',
     indexFailed: '索引同步失败',
@@ -6957,27 +6989,27 @@ export default {
     deleteFailed: '删除失败，请稍后再试！',
     uploadTime: '上传时间',
     newSession: '新会话',
-    editDocument: '编辑文档',
+    editDocument: '编辑文件',
     rebuildDocument: '重建知识',
-    rebuildConfirm: '确认重建文档"{fileName}"？该操作会清理现有分块并重新解析。',
+    rebuildConfirm: '确认重建文件"{fileName}"？该操作会清理现有分块并重新解析。',
     rebuildSubmitted: '重建任务已提交',
     rebuildFailed: '重建失败，请稍后再试',
-    rebuildInProgress: '当前文档正在解析中，请稍后重试',
+    rebuildInProgress: '当前文件正在解析中，请稍后重试',
     cancelParse: '停止解析',
     cancelParseConfirmBody: '确认停止解析"{title}"？已写入的分块会保留，可稍后通过"重建"重新触发；优化阶段（摘要 / 问答 / 知识图谱）的待执行任务会被立即丢弃。',
     cancelParseSubmitted: '已停止解析',
     cancelParseFailed: '停止失败，请稍后再试',
     draft: '草稿',
     draftTip: '暂存内容，未参与检索',
-    untitledDocument: '未命名文档',
-    deleteDocument: '删除文档',
+    untitledDocument: '未命名文件',
+    deleteDocument: '删除文件',
     moveDocument: '移动到...',
     moveToKnowledgeBase: '移动到知识库',
     moveNoTargets: '没有兼容的目标知识库（需要相同类型和 Embedding 模型）',
     moveModeReuseVectors: '复用向量（快速）',
     moveModeReuseVectorsDesc: '直接移动分块和向量索引，适用于分片配置相同的情况',
     moveModeReparse: '重新解析',
-    moveModeReparseDesc: '使用目标知识库的分片配置重新解析文档',
+    moveModeReparseDesc: '使用目标知识库的分片配置重新解析文件',
     moveConfirm: '确认移动',
     moveConfirmTitle: '确认移动设置',
     moveStarted: '移动任务已提交',
@@ -6989,7 +7021,7 @@ export default {
     generatingSummary: '生成摘要中...',
     documentSummary: '摘要',
     detailSectionMeta: '基本信息',
-    confirmDeleteDocument: '确认删除文档"{fileName}"，删除后将无法恢复',
+    confirmDeleteDocument: '确认删除文件"{fileName}"，删除后将无法恢复',
     confirmDelete: '删除',
     viewModeGrid: '卡片视图',
     viewModeList: '列表视图',
@@ -7007,30 +7039,30 @@ export default {
     batchDelete: '批量删除',
     batchDownload: '批量下载',
     batchDownloading: '正在打包下载…',
-    batchDownloadHint: '下载所选文件为 ZIP，每批最多 200 项、原始文件合计 512 MiB。全选仅包含已加载的文档；没有原始文件的网页条目会自动跳过。ZIP 会保留知识库文件夹。',
+    batchDownloadHint: '下载所选文件为 ZIP，每批最多 200 项、原始文件合计 512 MiB。全选仅包含已加载的文件；没有原始文件的网页条目会自动跳过。ZIP 会保留知识库文件夹。',
     batchDownloadStarted: '已开始保存 ZIP，解压后即可按文件夹批量上传文件',
     batchDownloadFailed: '批量下载失败，请稍后重试',
-    batchDownloadSkipped: '已跳过 {count} 个没有原始文件的文档',
-    batchDownloadNoFiles: '所选文档没有可下载的原始文件',
+    batchDownloadSkipped: '已跳过 {count} 个没有原始文件的文件',
+    batchDownloadNoFiles: '所选文件没有可下载的原始文件',
     batchDownloadTooLarge: '所选文件合计超过 512 MiB，请减少选择后分批下载',
     selectLoaded: '全选已加载',
-    confirmBatchDeleteDocument: '确认删除选中的 {count} 个文档？删除后将无法恢复。',
+    confirmBatchDeleteDocument: '确认删除选中的 {count} 个文件？删除后将无法恢复。',
     deleteSubmitted: '删除任务已提交，正在等待完成。',
     deletePending: '删除尚未完成，请稍后刷新查看结果。',
-    deleteTaskFailed: '删除任务失败，请查看文档错误详情后重试。',
-    deleteStatusUnavailable: '暂时无法确认删除结果，请稍后刷新查看文档状态。',
-    batchDeleteSuccess: '成功删除 {count} 个文档',
+    deleteTaskFailed: '删除任务失败，请查看文件错误详情后重试。',
+    deleteStatusUnavailable: '暂时无法确认删除结果，请稍后刷新查看文件状态。',
+    batchDeleteSuccess: '成功删除 {count} 个文件',
     batchDeleteFailed: '批量删除失败',
     batchTag: '批量打标签',
     batchTagDialogHeading: '批量打标签',
-    batchTagSubtitle: '为选中的 {count} 个文档统一设置标签（将替换文档原有标签）',
-    batchTagSuccess: '已为 {count} 个文档成功设置标签',
+    batchTagSubtitle: '为选中的 {count} 个文件统一设置标签（将替换文件原有标签）',
+    batchTagSuccess: '已为 {count} 个文件成功设置标签',
     batchTagFailed: '批量打标签失败',
-    confirmBatchReparseDocument: '确认重建选中的 {count} 个文档？现有内容将被清除并重新解析。',
+    confirmBatchReparseDocument: '确认重建选中的 {count} 个文件？现有内容将被清除并重新解析。',
     confirmBatchReparse: '确认并重新解析',
     batchReparseSuccess: '已提交 {count} 个重建任务',
     batchReparseFailed: '批量重建失败',
-    batchReparseSkippedInFlight: '已跳过 {count} 个正在解析中的文档',
+    batchReparseSkippedInFlight: '已跳过 {count} 个正在解析中的文件',
     statusCompleted: '已完成',
     statusProcessing: '解析中',
     statusFinalizing: '优化中',
@@ -7047,7 +7079,7 @@ export default {
     textMarkdownFormat: 'text、markdown格式文件，不超过200K',
     dragFileNotText: '请拖拽文件而不是文本或链接',
     searchPlaceholder: '搜索知识库...',
-    docSearchPlaceholder: '搜索文档名称...',
+    docSearchPlaceholder: '搜索文件名称...',
     fileTypeFilter: '文件类型',
     allFileTypes: '全部类型',
     allTags: '全部标签',
@@ -7092,7 +7124,7 @@ export default {
       enabled: '已启用',
       vectorStore: '向量存储',
       fileStorage: '文件存储',
-      documentCount: '文档数',
+      documentCount: '文件数',
       faqCount: '问答数',
       supportedFileTypes: '可上传格式',
       chunking: '分块',
@@ -7104,7 +7136,7 @@ export default {
       roleOwner: '创建者',
       permissionOwner: '可编辑、管理设置、删除知识库',
       permissionAdmin: '可编辑、管理共享设置',
-      permissionEditor: '可编辑文档与标签',
+      permissionEditor: '可编辑文件与标签',
       permissionViewer: '仅查看与检索',
       fromOrg: '来自空间',
       sharedAt: '共享于',
@@ -7151,7 +7183,7 @@ export default {
       steps: {
         done: {
           title: '开始探索吧',
-          desc: '试试提一个与已上传文档相关的问题，体验带引用的精准回答。'
+          desc: '试试提一个与已上传文件相关的问题，体验带引用的精准回答。'
         },
         send: {
           title: '发送开始对话',
@@ -7171,15 +7203,15 @@ export default {
       steps: {
         done: {
           title: '解析完成后即可使用',
-          desc: '文档解析入库后，可在对话中 {\'@\'} 本知识库提问，回答会附带引用来源。'
+          desc: '文件解析入库后，可在对话中 {\'@\'} 本知识库提问，回答会附带引用来源。'
         },
         upload: {
-          title: '添加文档',
+          title: '添加文件',
           desc: '点击此处上传文件、文件夹，或导入网页与在线编辑内容。'
         },
         intro: {
           title: '知识库还是空的',
-          desc: '添加第一份资料后，才能基于它进行检索与对话。支持拖拽上传多种文档格式。'
+          desc: '添加第一份资料后，才能基于它进行检索与对话。支持拖拽上传多种文件格式。'
         }
       }
     },
@@ -7199,7 +7231,7 @@ export default {
         },
         navMultimodal: {
           title: '附件上传（可选）',
-          desc: '开启后，对话中可上传图片、文档、音频等附件；图片理解需先在系统设置中配置 VLLM 模型。'
+          desc: '开启后，对话中可上传图片、文件、音频等附件；图片理解需先在系统设置中配置 VLLM 模型。'
         },
         navWebsearch: {
           title: '联网搜索（可选）',
@@ -7259,11 +7291,11 @@ export default {
         },
         multimodalToggle: {
           title: '开启多模态解析',
-          desc: '启用后，上传的图片类文档将使用视觉语言模型提取内容，便于检索与问答。'
+          desc: '启用后，上传的图片类文件将使用视觉语言模型提取内容，便于检索与问答。'
         },
         navMultimodal: {
           title: '多模态 / 图片理解（可选）',
-          desc: '若文档含大量图表、扫描件或需理解图片内容，可在此开启多模态并选择 VLM 模型。'
+          desc: '若文件含大量图表、扫描件或需理解图片内容，可在此开启多模态并选择 VLM 模型。'
         },
         storage: {
           title: '存储引擎（可选）',
@@ -7271,7 +7303,7 @@ export default {
         },
         chunking: {
           title: '分块策略（可选）',
-          desc: '决定文档如何切分为检索片段。默认分块大小已针对 RAG 优化，一般无需修改。'
+          desc: '决定文件如何切分为检索片段。默认分块大小已针对 RAG 优化，一般无需修改。'
         },
         parser: {
           title: '解析引擎（可选）',
@@ -7283,7 +7315,7 @@ export default {
         },
         llm: {
           title: '对话 / 摘要模型',
-          desc: '用于文档摘要、问答生成等。若列表为空，请通过下拉菜单前往系统设置添加模型。'
+          desc: '用于文件摘要、问答生成等。若列表为空，请通过下拉菜单前往系统设置添加模型。'
         },
         navModels: {
           title: '配置模型（必填）',
@@ -7299,7 +7331,7 @@ export default {
         },
         type: {
           title: '选择知识库类型',
-          desc: '文档库适合上传 PDF、Word 等文件；FAQ 库适合问答对。创建后类型不可更改，请按需选择。'
+          desc: '文件库适合上传 PDF、Word 等文件；FAQ 库适合问答对。创建后类型不可更改，请按需选择。'
         }
       }
     },
@@ -7330,7 +7362,7 @@ export default {
         },
         intro: {
           title: '需要先配置模型',
-          desc: '创建文档知识库至少需要：一个对话模型（用于摘要与问答）和一个 Embedding 模型（用于向量检索）。请先在系统设置中添加。'
+          desc: '创建文件知识库至少需要：一个对话模型（用于摘要与问答）和一个 Embedding 模型（用于向量检索）。请先在系统设置中添加。'
         }
       }
     },
@@ -7338,7 +7370,7 @@ export default {
       steps: {
         create: {
           title: '创建第一个知识库',
-          desc: '知识库用来存放文档与 FAQ。点击下方高亮的「新建知识库」按钮，我们会带你完成表单填写。'
+          desc: '知识库用来存放文件与 FAQ。点击下方高亮的「新建知识库」按钮，我们会带你完成表单填写。'
         }
       }
     }

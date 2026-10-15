@@ -305,7 +305,7 @@ export default {
       steps: {
         create: {
           title: 'Create your first knowledge base',
-          desc: 'Knowledge bases hold documents and FAQs. Click the highlighted "New knowledge base" button below and we will walk you through the form.'
+          desc: 'Knowledge bases hold files and FAQs. Click the highlighted "New knowledge base" button below and we will walk you through the form.'
         }
       }
     },
@@ -314,7 +314,7 @@ export default {
       steps: {
         intro: {
           title: 'Configure models first',
-          desc: 'A document knowledge base needs at least one chat model (summaries and Q&A) and one Embedding model (vector search). Add them in system settings.'
+          desc: 'A file knowledge base needs at least one chat model (summaries and Q&A) and one Embedding model (vector search). Add them in system settings.'
         },
         addModel: {
           title: 'Add models',
@@ -344,7 +344,7 @@ export default {
       steps: {
         type: {
           title: 'Choose a type',
-          desc: 'Document bases are for PDFs, Word files, and similar uploads. FAQ bases are for question–answer pairs. The type cannot be changed later.'
+          desc: 'File bases are for PDFs, Word files, and similar uploads. FAQ bases are for question–answer pairs. The type cannot be changed later.'
         },
         name: {
           title: 'Enter a name',
@@ -372,7 +372,7 @@ export default {
         },
         chunking: {
           title: 'Chunking (optional)',
-          desc: 'How documents are split for retrieval. Default chunk sizes are tuned for RAG and rarely need changes.'
+          desc: 'How files are split for retrieval. Default chunk sizes are tuned for RAG and rarely need changes.'
         },
         storage: {
           title: 'Storage (optional)',
@@ -380,7 +380,7 @@ export default {
         },
         navMultimodal: {
           title: 'Multimodal / images (optional)',
-          desc: 'Enable this if documents contain charts, scans, or image-heavy content that needs vision understanding.'
+          desc: 'Enable this if files contain charts, scans, or image-heavy content that needs vision understanding.'
         },
         multimodalToggle: {
           title: 'Enable multimodal parsing',
@@ -444,7 +444,7 @@ export default {
         },
         navMultimodal: {
           title: 'Attachment upload (optional)',
-          desc: 'Lets users send images, documents, and audio in chat; image understanding requires a VLM in system settings.'
+          desc: 'Lets users send images, files, and audio in chat; image understanding requires a VLM in system settings.'
         },
         multimodal: {
           title: 'Enable attachment upload',
@@ -467,12 +467,12 @@ export default {
           desc: 'Add your first item so you can search and chat over it. You can also drag and drop supported file types.'
         },
         upload: {
-          title: 'Add documents',
+          title: 'Add files',
           desc: 'Use this menu to upload files or folders, import a URL, or create content online.'
         },
         done: {
           title: 'Ready after parsing',
-          desc: 'Once documents are indexed, mention this knowledge base in chat with {\'@\'} to get answers with citations.'
+          desc: 'Once files are indexed, mention this knowledge base in chat with {\'@\'} to get answers with citations.'
         }
       }
     },
@@ -492,7 +492,7 @@ export default {
         },
         done: {
           title: 'You are ready to explore',
-          desc: 'Try a question related to your uploaded documents and see grounded answers with references.'
+          desc: 'Try a question related to your uploaded files and see grounded answers with references.'
         }
       }
     }
@@ -527,8 +527,15 @@ export default {
     sharedTooltip: 'Accessed from an external workspace via a shared space'
   },
   knowledgeBase: {
+    sourceGroups: { all: 'All files', other: 'Other files', removed: 'Removed data source' },
+
+    originalSourceLink: 'Original link',
+    openOriginalDocument: 'Open original file',
+    copySourceLink: 'Copy link',
+    copySourceLinkFailed: 'Copy failed. Select and copy the link manually.',
+    sourceLinkUnavailable: 'Original link unavailable',
     tagAddAction: 'Add tags',
-    documentCount: '{count} documents',
+    documentCount: '{count} files',
     filters: 'Filters',
     clearFilters: 'Clear filters',
 
@@ -539,7 +546,7 @@ export default {
       roleOwner: 'Owner',
       permissionOwner: 'Edit, manage settings, delete knowledge base',
       permissionAdmin: 'Edit, manage sharing',
-      permissionEditor: 'Edit documents and tags',
+      permissionEditor: 'Edit files and tags',
       permissionViewer: 'View and search only',
       fromOrg: 'From space',
       sharedAt: 'Shared at',
@@ -560,7 +567,7 @@ export default {
       enabled: 'Enabled',
       vectorStore: 'Vector store',
       fileStorage: 'File storage',
-      documentCount: 'Documents',
+      documentCount: 'Files',
       faqCount: 'FAQs',
       supportedFileTypes: 'Accepted formats',
       chunking: 'Chunking',
@@ -588,16 +595,17 @@ export default {
     tagUpdateSuccess: 'Tag updated successfully',
     tagEditDialogHeading: 'Edit tags',
     folderTree: {
-      totalDocuments: '{count} documents total',
-      countHint: '{direct} documents in this folder; {total} including subfolders',
-      filteredCount: '{count} matching documents',
+      showFolders: 'Show folders',
+      totalDocuments: '{count} files total',
+      countHint: 'Direct files: {direct}',
+      filteredCount: '{count} matching files',
       title: 'Folders',
       rootRow: 'Root',
-      rootRowTip: 'Knowledge base root; documents not in a subfolder live here',
-      folderCardCount: '{count} documents',
+      rootRowTip: 'Knowledge base root; files not in a subfolder live here',
+      folderCardCount: '{count} files',
       searchingSubtree: '(including sub-folders)',
-      emptyFolder: 'This folder has no documents yet',
-      emptySearch: 'No matching documents',
+      emptyFolder: 'This folder has no files yet',
+      emptySearch: 'No matching files',
       collapse: 'Collapse folders',
       expand: 'Expand folders',
       collapseFolder: 'Collapse this folder',
@@ -618,8 +626,8 @@ export default {
       newFolderHint: 'Press Enter to create and move',
       newFolderHintRoot: 'Will be created under root',
       newFolderHintUnder: 'Will be created under “{folder}”',
-      success: 'Moved {count} documents',
-      failed: 'Could not move the documents',
+      success: 'Moved {count} files',
+      failed: 'Could not move the files',
       duplicate: 'That folder already exists',
     },
     tagFilterTitle: 'Filter by tag',
@@ -629,13 +637,13 @@ export default {
     tagManageDescription: 'Create, rename, or delete knowledge base tags',
     tagManageLink: 'Manage tags…',
     tagManageListSection: 'Tags',
-    tagManageDocCount: '{count} documents',
+    tagManageDocCount: '{count} files',
     tagManageFaqCount: '{count} FAQ entries',
     tagPickerSelected: 'Selected',
     tagPickerUnselected: 'Not selected',
     tagSelectedCount: '{count} selected',
     tagPickerSearch: "Search or create a tag",
-    tagPickerInUse: "This tag is in use. Remove its document associations before deleting it.",
+    tagPickerInUse: "This tag is in use. Remove its file associations before deleting it.",
     tagPickerDeleteConfirm: "Delete tag “{name}”?",
     untagged: 'Untagged',
     tagCreateAction: 'Create tag',
@@ -644,7 +652,7 @@ export default {
     tagNameRequired: 'Please provide a tag name',
     tagCreateSuccess: 'Tag created',
     tagEditSuccess: 'Tag updated',
-    tagDeleteDescDoc: 'Delete tag "{name}"? All documents under this tag will also be deleted.',
+    tagDeleteDescDoc: 'Delete tag "{name}"? All files under this tag will also be deleted.',
     tagDeleteSuccess: 'Tag deleted',
     tagEditAction: 'Rename',
     tagDeleteAction: 'Delete',
@@ -653,10 +661,10 @@ export default {
     tagPlaceholder: 'Select tags',
     noTags: 'No tags',
     videosFilteredNoVLM: 'Skipped {count} video file(s) (video upload is not supported)',
-    unsupportedTypesHint: 'Some document types ({types}) have no available parser engine and cannot be processed',
+    unsupportedTypesHint: 'Some file types ({types}) have no available parser engine and cannot be processed',
     goToParserSettings: 'Configure',
     importURL: 'Import from URL',
-    addDocument: 'Add Document',
+    addDocument: 'Add File',
     importURLTitle: 'Import from URL',
     urlRequired: 'Please enter a URL',
     invalidURL: 'Please enter a valid URL',
@@ -686,13 +694,14 @@ export default {
     channelYuque: 'Yuque',
     channelGitLab: 'GitLab',
     channelIma: 'Tencent IMA',
+    channelMockplus: 'Mockplus',
     channelUpload: 'Upload',
     channelManual: 'Manual',
     channelUrl: 'Web',
     channelUnknown: 'Unknown',
     urlSource: 'Source URL',
     webContent: 'Web Content',
-    documentContent: 'Document Content',
+    documentContent: 'File Content',
     importTime: 'Import Time',
     createTime: 'Create Time',
     createdAt: 'Created',
@@ -709,7 +718,7 @@ export default {
     confirmDeleteQuestion: 'Are you sure you want to delete this question? The corresponding vector index will also be removed.',
     legacyQuestionCannotDelete: 'Legacy format questions cannot be deleted. Please regenerate questions.',
     customMetadata: 'Custom metadata',
-    metadataCapabilityHint: 'Used for document summaries and as document-level context after retrieval; it is not indexed and does not affect retrieval ranking',
+    metadataCapabilityHint: 'Used for file summaries and as file-level context after retrieval; it is not indexed and does not affect retrieval ranking',
     noCustomMetadata: 'No custom metadata',
     addMetadataField: 'Add metadata field',
     metadataKeyPlaceholder: 'Field name',
@@ -723,7 +732,7 @@ export default {
     metadataNumberRequired: 'Metadata field {key} must be a valid number',
     regenerateSummary: 'Regenerate summary',
     generateSummary: 'Generate summary',
-    noDocumentSummary: 'No document summary',
+    noDocumentSummary: 'No file summary',
     summaryRefreshed: 'Summary refreshed',
     summaryRefreshQueued: 'Summary refresh queued; it will update automatically when ready',
     indexFailed: 'Index sync failed',
@@ -761,27 +770,27 @@ export default {
     deleteFailed: 'Delete failed. Please try again later!',
     uploadTime: 'Upload Time',
     newSession: 'New Chat',
-    editDocument: 'Edit Document',
-    rebuildDocument: 'Rebuild Document',
-    rebuildConfirm: 'Rebuild document "{fileName}"? This will clear existing chunks and parse it again.',
+    editDocument: 'Edit File',
+    rebuildDocument: 'Rebuild File',
+    rebuildConfirm: 'Rebuild file "{fileName}"? This will clear existing chunks and parse it again.',
     rebuildSubmitted: 'Rebuild task submitted',
     rebuildFailed: 'Rebuild failed. Please try again later',
-    rebuildInProgress: 'This document is currently being parsed. Please try again later',
+    rebuildInProgress: 'This file is currently being parsed. Please try again later',
     cancelParse: 'Stop parsing',
     cancelParseConfirmBody: 'Stop parsing "{title}"? Already-written chunks are kept and can be re-parsed later via "Rebuild"; pending optimization tasks (summary / Q&A / knowledge graph) will be dropped immediately.',
     cancelParseSubmitted: 'Parsing stopped',
     cancelParseFailed: 'Failed to stop, please try again later',
     draft: 'Draft',
     draftTip: 'Temporarily saved and not included in retrieval',
-    untitledDocument: 'Untitled Document',
-    deleteDocument: 'Delete Document',
+    untitledDocument: 'Untitled File',
+    deleteDocument: 'Delete File',
     moveDocument: 'Move to...',
     moveToKnowledgeBase: 'Move to Knowledge Base',
     moveNoTargets: 'No compatible knowledge bases found (same type and embedding model required)',
     moveModeReuseVectors: 'Reuse Vectors (Fast)',
     moveModeReuseVectorsDesc: 'Directly move chunks and vector indices. Use when chunking config is the same.',
     moveModeReparse: 'Re-parse',
-    moveModeReparseDesc: 'Re-parse documents using the target knowledge base\'s chunking config.',
+    moveModeReparseDesc: 'Re-parse files using the target knowledge base\'s chunking config.',
     moveConfirm: 'Confirm Move',
     moveConfirmTitle: 'Confirm move settings',
     moveStarted: 'Move task submitted',
@@ -793,7 +802,7 @@ export default {
     generatingSummary: 'Generating summary...',
     documentSummary: 'Summary',
     detailSectionMeta: 'Basic info',
-    confirmDeleteDocument: 'Confirm deletion of document "{fileName}", recovery will be impossible after deletion',
+    confirmDeleteDocument: 'Confirm deletion of file "{fileName}", recovery will be impossible after deletion',
     confirmDelete: 'Confirm Delete',
     viewModeGrid: 'Grid view',
     viewModeList: 'List view',
@@ -811,35 +820,35 @@ export default {
     batchDelete: 'Delete selected',
     batchDownload: 'Download selected',
     batchDownloading: 'Preparing download…',
-    batchDownloadHint: 'Download a ZIP of up to 200 documents and 512 MiB of original content per batch. Select all includes loaded documents only; web pages without original files are skipped. The ZIP keeps knowledge-base folders.',
+    batchDownloadHint: 'Download a ZIP of up to 200 files and 512 MiB of original content per batch. Select all includes loaded files only; web pages without original files are skipped. The ZIP keeps knowledge-base folders.',
     batchDownloadStarted: 'ZIP saving started. Extract it, then upload the files and folders.',
     batchDownloadFailed: 'Batch download failed. Please try again.',
-    batchDownloadSkipped: 'Skipped {count} documents that have no original file.',
-    batchDownloadNoFiles: 'None of the selected documents have an original file to download.',
-    batchDownloadTooLarge: 'Selected files total more than 512 MiB. Choose fewer documents and try again.',
+    batchDownloadSkipped: 'Skipped {count} files that have no original file.',
+    batchDownloadNoFiles: 'None of the selected files have an original file to download.',
+    batchDownloadTooLarge: 'Selected files total more than 512 MiB. Choose fewer files and try again.',
     selectLoaded: 'Select loaded',
-    confirmBatchDeleteDocument: 'Delete {count} selected documents? This action cannot be undone.',
+    confirmBatchDeleteDocument: 'Delete {count} selected files? This action cannot be undone.',
     deleteSubmitted: 'Delete request submitted. Waiting for completion.',
     deletePending: 'Deletion is still pending. Refresh later to check the result.',
-    deleteTaskFailed: 'Deletion failed. Check the document error details and try again.',
-    deleteStatusUnavailable: 'Could not confirm the deletion result. Refresh later to check the document status.',
-    batchDeleteSuccess: 'Deleted {count} documents',
+    deleteTaskFailed: 'Deletion failed. Check the file error details and try again.',
+    deleteStatusUnavailable: 'Could not confirm the deletion result. Refresh later to check the file status.',
+    batchDeleteSuccess: 'Deleted {count} files',
     batchDeleteFailed: 'Batch delete failed',
     batchTag: 'Batch Tag',
     batchTagDialogHeading: 'Batch Tag',
-    batchTagSubtitle: 'Set tags for {count} selected documents (will replace existing tags)',
-    batchTagSuccess: 'Tags applied to {count} documents',
+    batchTagSubtitle: 'Set tags for {count} selected files (will replace existing tags)',
+    batchTagSuccess: 'Tags applied to {count} files',
     batchTagFailed: 'Batch tag failed',
-    confirmBatchReparseDocument: 'Rebuild {count} selected documents? Existing content will be cleared and each document will be re-parsed.',
+    confirmBatchReparseDocument: 'Rebuild {count} selected files? Existing content will be cleared and each file will be re-parsed.',
     confirmBatchReparse: 'Confirm and reparse',
     batchReparseSuccess: 'Submitted {count} rebuild tasks',
     batchReparseFailed: 'Batch rebuild failed',
-    batchReparseSkippedInFlight: 'Skipped {count} document(s) still being parsed',
+    batchReparseSkippedInFlight: 'Skipped {count} file(s) still being parsed',
     statusCompleted: 'Completed',
     statusProcessing: 'Processing',
     statusFinalizing: 'Optimizing',
     statusStalled: 'May be stuck',
-    stalledHint: 'No progress for {minutes} minutes; it may be stuck. Open the trace to see where it stopped, or stop parsing and rebuild the document.',
+    stalledHint: 'No progress for {minutes} minutes; it may be stuck. Open the trace to see where it stopped, or stop parsing and rebuild the file.',
     statusQueued: 'Queued',
     queuedHint: 'No progress for {minutes} minutes, but its tasks are still waiting in the queue, usually because of a backlog. It will continue on its own.',
     statusFailed: 'Failed',
@@ -851,7 +860,7 @@ export default {
     textMarkdownFormat: 'text, markdown format files, max 200K',
     dragFileNotText: 'Please drag files instead of text or links',
     searchPlaceholder: 'Search knowledge bases...',
-    docSearchPlaceholder: 'Search document names...',
+    docSearchPlaceholder: 'Search file names...',
     fileTypeFilter: 'File Type',
     allFileTypes: 'All Types',
     allTags: 'All Tags',
@@ -883,9 +892,9 @@ export default {
     chunkLoadFailed: 'Failed to load chunks'
   },
   uploadConfirm: {
-    documentSummary: "Document summary",
-    documentSummaryDescription: "Choose whether to automatically summarize documents in this import.",
-    generateSummary: "Generate document summaries",
+    documentSummary: "File summary",
+    documentSummaryDescription: "Choose whether to automatically summarize files in this import.",
+    generateSummary: "Generate file summaries",
     generateSummaryHint: "Enabled by default. Disable to skip summaries while parsing, indexing, and other configured steps continue.",
 
     title: 'Confirm Upload',
@@ -906,11 +915,11 @@ export default {
     summaryTagsCount: '{count} tags',
     confirm: 'Upload and parse',
     cancel: 'Cancel',
-    tabTags: 'Document tags',
-    tagsDescription: 'Select one or more tags for every document in this import batch',
+    tabTags: 'File tags',
+    tagsDescription: 'Select one or more tags for every file in this import batch',
     tagsPlaceholder: 'Select tags (multiple allowed)',
     tagsEmpty: 'This knowledge base has no tags. You can create them in tag management after upload.',
-    tagsLoadFailed: 'Failed to load tags. You can set them later from the document list.',
+    tagsLoadFailed: 'Failed to load tags. You can set them later from the file list.',
     noItems: 'Add at least one file or URL',
     urlItemLabel: 'URL',
     urlAdded: 'URL added',
@@ -938,7 +947,7 @@ export default {
     confirmManual: 'Publish and parse',
     titleReparse: 'Confirm reparse',
     confirmReparse: 'Confirm and reparse',
-    reparseSource: 'Document to reparse',
+    reparseSource: 'File to reparse',
     reparseHint: 'Reuses the last parse settings; adjust them here',
     manualCharCount: '{count} characters'
   },
@@ -3156,18 +3165,18 @@ export default {
       kbId: 'Knowledge Base ID',
       kbIdDesc: 'Use this ID to target the knowledge base in API integrations',
       typeLabel: 'Knowledge Base Type',
-      typeDocument: 'Document-based',
+      typeDocument: 'File-based',
       typeFAQ: 'FAQ Q&A',
-      typeDescription: 'FAQ suits structured Q&A datasets; document type supports file parsing and chunking; Wiki type auto-builds interlinked knowledge pages via LLM.',
+      typeDescription: 'FAQ suits structured Q&A datasets; file type supports file parsing and chunking; Wiki type auto-builds interlinked knowledge pages via LLM.',
       nameLabel: 'Knowledge Base Name',
       namePlaceholder: 'Enter knowledge base name',
       descriptionLabel: 'Knowledge Base Description',
       descriptionPlaceholder: 'Enter knowledge base description (optional)',
       profile: {
         title: 'AI-generated description',
-        hint: 'Derived from the document profiles. It never overwrites the manual description above; agents read both to decide whether a question belongs to this knowledge base.',
-        empty: 'Not generated yet. Upload documents, let their summaries finish, then use the button below.',
-        noDocuments: 'No parsed documents in this knowledge base yet.',
+        hint: 'Derived from the file profiles. It never overwrites the manual description above; agents read both to decide whether a question belongs to this knowledge base.',
+        empty: 'Not generated yet. Upload files, let their summaries finish, then use the button below.',
+        noDocuments: 'No parsed files in this knowledge base yet.',
         questions: 'Typical questions',
         generate: 'Generate AI description',
         regenerate: 'Regenerate',
@@ -3176,7 +3185,7 @@ export default {
         generateFailed: 'Failed to generate the AI description',
         adopted: 'Copied into the description; save to apply',
         failed: 'Last generation failed: {error}',
-        generatedAt: 'Generated {time} · based on {count} documents'
+        generatedAt: 'Generated {time} · based on {count} files'
       }
     },
     wiki: {
@@ -3191,19 +3200,19 @@ export default {
       extractionInstructionsLabel: 'Wiki Extraction Focus',
       extractionInstructionsTip: 'Describe domain entities and concepts to prioritize without replacing the system JSON and citation protocol.',
       extractionInstructionsPlaceholder: 'For example: prioritize products, versions, organizations, owners, and core technical concepts…',
-      extractionGranularityTip: 'Controls how many Wiki entities/concepts are extracted per document. Finer = tighter index, coarser = more comprehensive',
+      extractionGranularityTip: 'Controls how many Wiki entities/concepts are extracted per file. Finer = tighter index, coarser = more comprehensive',
       granularityFocused: 'Focused',
       granularityStandard: 'Standard',
       granularityExhaustive: 'Exhaustive',
-      granularityFocusedHint: 'Extract only the document’s main subjects (e.g. a resume yields the person and their projects). Cleanest, may miss secondary entities.',
+      granularityFocusedHint: 'Extract only the file’s main subjects (e.g. a resume yields the person and their projects). Cleanest, may miss secondary entities.',
       granularityStandardHint: 'Main subjects plus secondary entities/concepts that receive substantial discussion. Skips name-dropped terms. Recommended default.',
       granularityExhaustiveHint: 'Extract every named entity and concept, including passing mentions of stacks/tools. Use when the KB serves as a glossary.'
     },
     indexing: {
       title: 'Indexing Strategy',
-      description: 'Configure document processing pipelines. Each indexing method can be enabled or disabled independently.',
+      description: 'Configure file processing pipelines. Each indexing method can be enabled or disabled independently.',
       searchTitle: 'RAG Search',
-      searchDesc: 'Chunk, vectorize and keyword-index documents for hybrid retrieval',
+      searchDesc: 'Chunk, vectorize and keyword-index files for hybrid retrieval',
       wikiTitle: 'Wiki Knowledge Base',
       wikiDesc: 'Auto-generate interlinked wiki pages to build a structured knowledge system',
       graphTitle: 'Knowledge Graph',
@@ -3212,8 +3221,8 @@ export default {
       embeddingRequired: 'RAG search requires an Embedding model',
       lockedTip: 'The indexing strategy cannot be changed once the knowledge base contains content. Please clear the knowledge base first.',
       rebuildConfirmTitle: 'Rebuild Index',
-      rebuildConfirmBody: 'Indexing strategy has changed. Re-process {count} existing documents? This may take some time.',
-      rebuildSuccess: 'Rebuild task submitted for {count} documents',
+      rebuildConfirmBody: 'Indexing strategy has changed. Re-process {count} existing files? This may take some time.',
+      rebuildSuccess: 'Rebuild task submitted for {count} files',
       rebuildSkip: 'You can manually trigger a rebuild later from Data Sources'
     },
     wikiBrowser: {
@@ -3282,7 +3291,7 @@ export default {
       viewInGraph: 'View in Graph',
       editingBadge: 'Editing',
       pageActions: 'Page actions',
-      tabDocuments: 'Documents',
+      tabDocuments: 'Files',
       tabGraph: 'Graph',
       tabGraphTip: 'A graph of links between Wiki pages (page-link graph). This is NOT the same as the LLM-extracted entity-relationship Knowledge Graph configured under "KB Settings → Knowledge Graph".',
       searchPlaceholder: 'Search wiki pages...',
@@ -3320,20 +3329,20 @@ export default {
       filterComparison: 'Comparisons',
       legendFamiliar: 'Sources you use often',
       emptyTitle: 'No wiki pages yet',
-      emptyDesc: 'Upload documents with Wiki enabled to auto-generate knowledge pages',
+      emptyDesc: 'Upload files with Wiki enabled to auto-generate knowledge pages',
       selectPageHint: 'Select a page from the left to view its content',
       version: 'v{ver}',
       aliases: 'Aliases',
       linkedFrom: 'Linked from',
-      sources: 'Source documents',
+      sources: 'Source files',
       graphEmpty: 'Loading graph...',
       fitView: 'Fit to View',
       indexTitle: 'Index',
       loading: 'Loading…',
       loadMoreShort: 'Load more',
       indexOverviewTag: 'Directory',
-      indexEmpty: 'No wiki pages yet. Upload documents first.',
-      graphNoData: 'No graph data yet. Upload documents first. (This view shows links between Wiki pages, which is different from the entity-relationship graph configured under "KB Settings → Knowledge Graph".)',
+      indexEmpty: 'No wiki pages yet. Upload files first.',
+      graphNoData: 'No graph data yet. Upload files first. (This view shows links between Wiki pages, which is different from the entity-relationship graph configured under "KB Settings → Knowledge Graph".)',
       showArrows: 'Show arrows',
       hideArrows: 'Hide arrows',
       expandNeighbors: 'Expand neighbors',
@@ -3427,8 +3436,8 @@ export default {
       storageChangeConfirm: 'This knowledge base already has files. Changing the storage engine may make old files inaccessible. Do you want to proceed?'
     },
     document: {
-      title: 'Document Management',
-      subtitle: 'Click or drag-and-drop to upload documents; multiple formats are parsed automatically with intelligent chunking for a searchable knowledge base'
+      title: 'File Management',
+      subtitle: 'Click or drag-and-drop to upload files; multiple formats are parsed automatically with intelligent chunking for a searchable knowledge base'
     },
     faq: {
       title: 'FAQ Configuration',
@@ -3544,9 +3553,9 @@ export default {
     },
     chunking: {
       title: 'Chunking Settings',
-      description: 'Controls how uploaded documents are split before embedding. Defaults work for most cases — tune only when retrieval quality is off.',
+      description: 'Controls how uploaded files are split before embedding. Defaults work for most cases — tune only when retrieval quality is off.',
       sizeLabel: 'Chunk Size',
-      sizeDescription: 'Maximum characters per chunk (100–4000). Default 512 ≈ 100–130 English tokens. Smaller for FAQs (200–400), larger for narrative documents (1000–2000).',
+      sizeDescription: 'Maximum characters per chunk (100–4000). Default 512 ≈ 100–130 English tokens. Smaller for FAQs (200–400), larger for narrative files (1000–2000).',
       characters: 'characters',
       overlapLabel: 'Chunk Overlap',
       overlapDescription: 'Characters shared between adjacent chunks (0–500). Default 80 ≈ 15% of size — sweet spot per current research. Use 0 for FAQs/structured data, 150–200 for long-form narratives.',
@@ -3564,18 +3573,18 @@ export default {
         space: 'Space ( )'
       },
       parentChildLabel: 'Parent-Child Chunking',
-      parentChildDescription: 'Two-level chunking: small child chunks are vector-matched (precise hits) but the larger parent chunk is returned to the LLM (richer context). Recommended for long documents (>10 pages); skip for short FAQs to save storage.',
+      parentChildDescription: 'Two-level chunking: small child chunks are vector-matched (precise hits) but the larger parent chunk is returned to the LLM (richer context). Recommended for long files (>10 pages); skip for short FAQs to save storage.',
       parentChunkSizeLabel: 'Parent Chunk Size',
       parentChunkSizeDescription: 'Size of the context chunk returned to the LLM (512–8192). Default 4096 ≈ 1000 English tokens, fits comfortably in any modern LLM context window.',
       childChunkSizeLabel: 'Child Chunk Size',
       childChunkSizeDescription: 'Size of the embedded chunk used for vector match (64–2048). Default 384 ≈ 80 tokens — sweet spot for sentence-transformer / BGE-style embedders.',
       strategyLabel: 'Chunking Strategy',
-      strategyDescription: 'Choose how documents are split into chunks. The Automatic mode profiles each document and picks the best strategy.',
+      strategyDescription: 'Choose how files are split into chunks. The Automatic mode profiles each file and picks the best strategy.',
       strategyPlaceholder: 'Select a chunking strategy (splits by length if left empty)',
       strategies: {
         auto: {
           label: 'Automatic',
-          tooltip: 'A document profiler picks between heading-aware, structure-aware and length-based splitting per upload.'
+          tooltip: 'A file profiler picks between heading-aware, structure-aware and length-based splitting per upload.'
         },
         heading: {
           label: 'Heading-aware',
@@ -3656,16 +3665,16 @@ export default {
       description: 'Configure question generation and other advanced features',
       questionGeneration: {
         label: 'AI Question Generation',
-        description: 'Generate related questions for each chunk using LLM during document parsing to improve retrieval recall. Enabling this will increase document parsing time.',
+        description: 'Generate related questions for each chunk using LLM during file parsing to improve retrieval recall. Enabling this will increase file parsing time.',
         countLabel: 'Question Count',
-        countDescription: 'Number of questions to generate per document chunk (1-10)',
+        countDescription: 'Number of questions to generate per file chunk (1-10)',
         instructionsLabel: 'Question Generation Instructions',
         instructionsDescription: 'Specify audience, scenario, and wording while the system retains the stable output format',
         instructionsPlaceholder: 'For example: generate natural customer-support questions and avoid exam-style wording…'
       },
       profile: {
         label: 'Auto-generate knowledge base description',
-        description: 'After documents are added, removed or re-summarized, derive the description from the aggregated document profiles. The aggregation itself makes no model call; one small call runs only when the aggregate changed.',
+        description: 'After files are added, removed or re-summarized, derive the description from the aggregated file profiles. The aggregation itself makes no model call; one small call runs only when the aggregate changed.',
         modelLabel: 'Generation model',
         modelDescription: 'Leave empty to reuse the knowledge-base summary model.',
         modelPlaceholder: 'Select a generation model',
@@ -3679,10 +3688,10 @@ export default {
         modelLabel: 'Classification Model',
         modelDescription: 'Leave empty to reuse the knowledge-base summary model.',
         modelPlaceholder: 'Select a classification model',
-        maxTagsLabel: 'Maximum tags per document',
-        maxTagsDescription: 'Automatically associate 1-10 existing tags per document.',
-        skipIfTaggedLabel: 'Skip documents that already have tags',
-        skipIfTaggedDescription: 'When enabled, documents tagged manually at upload time are left untouched, so a deliberate classification is not diluted.'
+        maxTagsLabel: 'Maximum tags per file',
+        maxTagsDescription: 'Automatically associate 1-10 existing tags per file.',
+        skipIfTaggedLabel: 'Skip files that already have tags',
+        skipIfTaggedDescription: 'When enabled, files tagged manually at upload time are left untouched, so a deliberate classification is not diluted.'
       },
       tableMetadataInstructions: {
         label: 'Table Metadata Instructions',
@@ -3696,8 +3705,8 @@ export default {
         vllmDescription: 'Vision-language model required for multimodal understanding',
         vllmPlaceholder: 'Select a VLLM model (required)',
         descriptionLanguageLabel: 'Image Description Language',
-        descriptionLanguageDescription: 'Leave empty to follow the document language instead of forcing Chinese',
-        descriptionLanguageAuto: 'Follow document language',
+        descriptionLanguageDescription: 'Leave empty to follow the file language instead of forcing Chinese',
+        descriptionLanguageAuto: 'Follow file language',
         customInstructionsLabel: 'Image Processing Instructions',
         customInstructionsDescription: 'Add visual priorities while OCR and Markdown output contracts remain fixed',
         customInstructionsPlaceholder: 'For example: prioritize nameplates, model numbers, alarm codes, and table units…'
@@ -5739,6 +5748,8 @@ export default {
     }
   },
   preview: {
+    imagePrevious: 'Previous image',
+    imageNext: 'Next image',
     tab: 'Preview',
     loading: 'Loading document preview...',
     loadFailed: 'Failed to load document preview',
@@ -6591,7 +6602,7 @@ export default {
     siteLabel: 'Tencent Docs site',
     sitePersonal: 'Personal (docs.qq.com)',
     siteSaaS: 'Enterprise (saas.docs.qq.com)',
-    selectFolderRequired: 'Select at least one folder',
+    selectFolderRequired: 'Select at least one folder or file',
     untitled: 'Untitled',
     resourceLoadFailed: 'Failed to load resources',
     noResources: 'No wiki spaces found',
@@ -6606,11 +6617,6 @@ export default {
     guideStep3_notion: 'Search and select your Integration app, then come back and click Retry',
     permissionDocLink: 'View Feishu wiki permission docs',
     syncScheduleLabel: 'Sync schedule',
-    conflictLabel: 'Conflict strategy',
-    conflict: {
-      overwrite: 'Overwrite',
-      skip: 'Skip existing'
-    },
     syncDeletions: 'Sync deletions (remove knowledge when deleted at source)',
     createAndSync: 'Create & Sync Now',
     createAndSyncSuccess: 'Data source created and sync task submitted',
@@ -6652,6 +6658,7 @@ export default {
       docsFailedSummary: '{n} document(s) failed to sync'
     },
     connector: {
+      mockplus: 'Mockplus',
       tencent_docs: 'Tencent Docs',
       feishu: 'Feishu',
       lark: 'Lark',
@@ -6666,7 +6673,8 @@ export default {
       gitlab: 'GitLab'
     },
     connectorDesc: {
-      tencent_docs: 'Sync readable documents in selected folders',
+      mockplus: 'Sync current project board images',
+      tencent_docs: 'Sync selected files or readable documents in selected folders',
       feishu: 'Sync documents, spreadsheets and files from Feishu Wiki',
       lark: 'Sync documents, spreadsheets and files from Lark Wiki (Feishu international)',
       feishu_drive: 'Sync documents, spreadsheets and files from a Feishu Drive folder',
@@ -6678,6 +6686,20 @@ export default {
       rss: 'Sync articles from RSS / Atom feeds',
       ima: 'Sync documents, notes and files from Tencent IMA knowledge bases (AI sessions and video parses are not supported)',
       gitlab: 'Sync files from GitLab projects'
+    },
+    mockplus: {
+      team: 'Team',
+      selectTeamRequired: 'Select a team',
+      teamDiscoveryFallback: 'Could not fetch teams. Enter the team ID.',
+
+      username: 'Account / email',
+      password: 'Password',
+      connectionRequired: 'Enter the service URL',
+
+      serviceUrl: 'Service URL',
+      teamId: 'Team ID',
+      selfSigned: 'Allow private self-signed certificate',
+      multimodalRequired: 'Image search and Q&A require multimodal processing in the knowledge base.',
     },
     drive: {
       folderTokenLabel: 'Drive folder token',
@@ -6801,6 +6823,16 @@ export default {
     hoursAgo: '{n}h ago',
     daysAgo: '{n}d ago',
     syncError: {
+      tencent_docs_archive_unsupported: 'Archives are not supported yet',
+      tencent_docs_empty_document: 'Empty document skipped',
+      tencent_docs_unsupported_format: 'Export format is not supported',
+      tencent_docs_permission_denied: 'Export or download permission denied',
+      tencent_docs_export_failed: 'Export failed; retry later',
+      tencent_docs_export_service_error: 'Tencent export service error ({code})',
+      tencent_docs_file_too_large: 'File exceeds the current {code} MB size limit',
+      tencent_docs_download_failed: 'File download failed',
+      tencent_docs_invalid_file: 'Downloaded file format is invalid or mismatched',
+      tencent_docs_metadata_unavailable: 'File information unavailable',
       dingtalk_document_failed: 'DingTalk document could not be read; check access and retry the sync.',
       dingtalk_resource_failed: 'DingTalk resource is unavailable; check access and the saved selection, then retry.',
       deletion_lookup_failed: 'Failed to look up the item before deletion; see server logs',

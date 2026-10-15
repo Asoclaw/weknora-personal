@@ -16,7 +16,6 @@ const loadingMore = ref(false)
 const hasMore = ref(false)
 const expandedId = ref('')
 const pageSize = 50
-
 async function fetchLogs(reset = true) {
   if (!props.dataSourceId) return
 
@@ -136,7 +135,15 @@ function hasPills(log: SyncLog) {
 const FAILED_ITEMS_CAP = 50
 
 function failedItems(log: SyncLog): SyncItemError[] {
-  return (log.result?.errors || []).slice(0, FAILED_ITEMS_CAP)
+  return (log.result?.errors || []).filter(e => !isSkippedDetail(e)).slice(0, FAILED_ITEMS_CAP)
+}
+
+function isSkippedDetail(e: SyncItemError): boolean {
+  return ['tencent_docs_archive_unsupported', 'tencent_docs_empty_document', 'tencent_docs_unsupported_format'].includes(e.code || '')
+}
+
+function skippedItems(log: SyncLog): SyncItemError[] {
+  return (log.result?.errors || []).filter(isSkippedDetail).slice(0, FAILED_ITEMS_CAP)
 }
 
 // Render one failure sample. The backend sends a stable i18n `code` (+ params)
@@ -299,6 +306,10 @@ const groupedLogs = computed(() => {
                   <div v-if="log.items_failed > failedItems(log).length" class="tl-failed-more">
                     {{ t('datasource.logDetail.failedItemsMore', { n: (log.items_failed - failedItems(log).length) }) }}
                   </div>
+                </div>
+                <div v-if="skippedItems(log).length" class="tl-failed tl-skipped">
+                  <div class="tl-failed-title">{{ t('datasource.logMetric.skipped') }} ({{ skippedItems(log).length }})</div>
+                  <div v-for="(e, i) in skippedItems(log)" :key="i" class="tl-failed-item" :title="formatSyncError(e)">{{ formatSyncError(e) }}</div>
                 </div>
               </div>
             </div>
@@ -589,6 +600,9 @@ const groupedLogs = computed(() => {
   color: var(--td-text-color-placeholder);
   padding: 2px 8px;
 }
+
+.tl-skipped .tl-failed-title { color: var(--td-text-color-secondary); }
+.tl-skipped .tl-failed-item { border-left-color: var(--td-component-border); }
 
 /* --- Drawer header --- */
 .logs-drawer-header {

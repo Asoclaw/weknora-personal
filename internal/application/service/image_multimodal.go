@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -148,7 +149,12 @@ func (s *ImageMultimodalService) tracker() SpanTracker {
 }
 
 // Handle implements asynq handler for TypeImageMultimodal.
-func (s *ImageMultimodalService) Handle(ctx context.Context, task *asynq.Task) error {
+func (s *ImageMultimodalService) Handle(ctx context.Context, task *asynq.Task) (retErr error) {
+	release, slotErr := acquireProcessingSlot(ctx, imageProcessingSlots)
+	if slotErr != nil {
+		return slotErr
+	}
+	defer release()
 	var payload types.ImageMultimodalPayload
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		return fmt.Errorf("unmarshal image multimodal payload: %w", err)
@@ -160,6 +166,32 @@ func (s *ImageMultimodalService) Handle(ctx context.Context, task *asynq.Task) e
 	ctx = context.WithValue(ctx, types.TenantIDContextKey, payload.TenantID)
 	if payload.Language != "" {
 		ctx = context.WithValue(ctx, types.LanguageContextKey, payload.Language)
+	}
+	if s.redisClient != nil {
+		lease := multimodalCompletionKey(payload) + ":lease"
+		token := uuid.NewString()
+		owned, err := s.redisClient.SetNX(ctx, lease, token, 30*time.Minute).Result()
+		if err != nil {
+			return err
+		}
+		if !owned {
+			return fmt.Errorf("image stage already running")
+		}
+		defer s.redisClient.Eval(context.Background(), `if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) end return 0`, []string{lease}, token)
+		done, err := s.redisClient.Exists(ctx, multimodalCompletionKey(payload)).Result()
+		if err != nil {
+			return err
+		}
+		if done > 0 {
+			return nil
+		}
+		ready, err := s.redisClient.Exists(ctx, multimodalCompletionKey(payload)+":ready").Result()
+		if err != nil {
+			return err
+		}
+		if ready > 0 {
+			return s.checkAndFinalizeAllImages(ctx, payload)
+		}
 	}
 
 	// Drop orphaned or user-aborted work before touching VLM. Missing
@@ -175,8 +207,7 @@ func (s *ImageMultimodalService) Handle(ctx context.Context, task *asynq.Task) e
 			payload.ChunkID, payload.KnowledgeID, payload.KnowledgeBaseID, payload.ImageURL)
 		// Still count this image toward the parent finalize gate so a batch
 		// of dropped orphans cannot strand multimodal:pending forever.
-		s.checkAndFinalizeAllImages(ctx, payload)
-		return nil
+		return s.checkAndFinalizeAllImages(ctx, payload)
 	}
 
 	// Open a per-image subspan under the parent attempt's multimodal
@@ -230,7 +261,15 @@ func (s *ImageMultimodalService) Handle(ctx context.Context, task *asynq.Task) e
 			}
 		}
 		if handleErr == nil || isFinalAsynqAttempt(ctx) {
-			s.checkAndFinalizeAllImages(ctx, payload)
+			if s.redisClient != nil {
+				if err := s.redisClient.Set(ctx, multimodalCompletionKey(payload)+":ready", "1", 7*24*time.Hour).Err(); err != nil {
+					retErr = err
+					return
+				}
+			}
+			if err := s.checkAndFinalizeAllImages(ctx, payload); err != nil {
+				retErr = err
+			}
 		} else {
 			logger.Infof(ctx,
 				"[ImageMultimodal] Skip finalize on retryable error for %s (will count on last attempt)",
@@ -384,6 +423,18 @@ func (s *ImageMultimodalService) Handle(ctx context.Context, task *asynq.Task) e
 func (s *ImageMultimodalService) shouldDropOrphanedMultimodal(
 	ctx context.Context, payload *types.ImageMultimodalPayload,
 ) (bool, error) {
+	if payload.ChunkID != "" && s.chunkService != nil {
+		chunk, err := s.chunkService.GetChunkByIDOnly(ctx, payload.ChunkID)
+		if errors.Is(err, repository.ErrChunkNotFound) {
+			return true, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		if chunk == nil || chunk.KnowledgeID != payload.KnowledgeID || chunk.TenantID != payload.TenantID {
+			return true, nil
+		}
+	}
 	if payload.KnowledgeID != "" && s.knowledgeRepo != nil {
 		k, err := s.knowledgeRepo.GetKnowledgeByIDOnly(ctx, payload.KnowledgeID)
 		if errors.Is(err, repository.ErrKnowledgeNotFound) {
@@ -393,7 +444,7 @@ func (s *ImageMultimodalService) shouldDropOrphanedMultimodal(
 			return false, err
 		}
 		switch k.ParseStatus {
-		case types.ParseStatusCancelled, types.ParseStatusDeleting:
+		case types.ParseStatusCompleted, types.ParseStatusCancelled, types.ParseStatusDeleting:
 			return true, nil
 		}
 	}
@@ -667,35 +718,42 @@ func multimodalPendingKey(knowledgeID string) string {
 	return fmt.Sprintf("multimodal:pending:%s", knowledgeID)
 }
 
-func (s *ImageMultimodalService) checkAndFinalizeAllImages(ctx context.Context, payload types.ImageMultimodalPayload) {
+func multimodalCompletionKey(payload types.ImageMultimodalPayload) string {
+	identity := fmt.Sprintf("%s\x00%d\x00%s\x00%s", payload.KnowledgeID, payload.Attempt, payload.ChunkID, payload.ImageURL)
+	return fmt.Sprintf("multimodal:done:%x", sha256.Sum256([]byte(identity)))
+}
+
+const completeImageOnceLua = `
+if redis.call('EXISTS', KEYS[2]) == 1 then return -2 end
+local current = tonumber(redis.call('GET', KEYS[1]))
+if not current or current <= 0 then return -1 end
+redis.call('SET', KEYS[2], '1', 'EX', 604800)
+local remaining = redis.call('DECR', KEYS[1])
+if remaining == 0 then redis.call('DEL', KEYS[1]) end
+return remaining`
+
+func (s *ImageMultimodalService) checkAndFinalizeAllImages(ctx context.Context, payload types.ImageMultimodalPayload) error {
 	if s.redisClient == nil {
 		s.enqueueKnowledgePostProcessTask(ctx, payload)
-		return
+		return nil
 	}
 
 	redisKey := multimodalPendingKey(payload.KnowledgeID)
 
-	pendingCount, err := s.redisClient.Decr(ctx, redisKey).Result()
+	pendingCount, err := s.redisClient.Eval(ctx, completeImageOnceLua, []string{redisKey, multimodalCompletionKey(payload)}).Int64()
 	if err != nil && err != redis.Nil {
-		// Redis hiccup must not strand the parent knowledge. Best-effort:
-		// enqueue post-process anyway. KnowledgePostProcess is idempotent
-		// (it transitions parse_status processing → completed under a row
-		// guard), so a duplicate triggered by a sibling image is harmless.
-		// The alternative — silently returning — is what produced the
-		// "permanently stuck" reports we are fixing here.
+		// Never finalize early when the pending count cannot be verified.
 		logger.Warnf(ctx,
-			"[ImageMultimodal] Decrement failed for %s (%v); fallback-enqueueing post-process",
+			"[ImageMultimodal] Completion acknowledgement failed for %s (%v)",
 			payload.KnowledgeID, err)
-		s.enqueueKnowledgePostProcessTask(ctx, payload)
-		return
+		return err
 	}
 
-	if pendingCount <= 0 {
+	if pendingCount == 0 {
 		logger.Infof(ctx, "[ImageMultimodal] All images processed for knowledge %s. Finalizing...", payload.KnowledgeID)
-		s.redisClient.Del(ctx, redisKey)
-
 		s.enqueueKnowledgePostProcessTask(ctx, payload)
 	}
+	return nil
 }
 
 func (s *ImageMultimodalService) enqueueKnowledgePostProcessTask(ctx context.Context, payload types.ImageMultimodalPayload) {

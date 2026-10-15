@@ -21,9 +21,11 @@ const (
 )
 
 type mcpClient struct {
-	http     *http.Client
-	token    string
-	endpoint string
+	http         *http.Client
+	token        string
+	endpoint     string
+	downloadHTTP *http.Client
+	pollDelay    *time.Duration
 }
 
 func newMCPClient(site, token string) (*mcpClient, error) {

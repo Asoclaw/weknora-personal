@@ -31,6 +31,7 @@ type AsynqTaskParams struct {
 	CoreServer           *asynq.Server `name:"coreAsynqServer"`
 	PostProcessServer    *asynq.Server `name:"postProcessAsynqServer"`
 	EnrichmentServer     *asynq.Server `name:"enrichmentAsynqServer"`
+	ReservedImageServer  *asynq.Server `name:"reservedImageAsynqServer" optional:"true"`
 	MaintenanceServer    *asynq.Server `name:"maintenanceAsynqServer"`
 	SharedServer         *asynq.Server `name:"sharedAsynqServer"`
 	WikiServer           *asynq.Server `name:"wikiAsynqServer"`
@@ -192,7 +193,16 @@ func NewEnrichmentAsynqServer(svc interfaces.SystemSettingService) *asynq.Server
 	allocation := resolveWorkerPoolConcurrency(svc)
 	log.Printf("asynq enrichment-pool server starting with concurrency=%d total_upstream=%d",
 		allocation.Enrichment, allocation.UpstreamTotal())
-	return newAsynqServer(allocation.Enrichment, types.QueueWeightsForPool(types.WorkerPoolEnrichment))
+	if allocation.Enrichment == 1 {
+		return nil
+	}
+	return newAsynqServer(allocation.Enrichment-1, types.QueueWeightsForPool(types.WorkerPoolEnrichment))
+}
+
+// Reserve one of the enrichment workers exclusively for images: a table
+// waiting for the file budget must not occupy every OCR-capable worker.
+func NewReservedImageAsynqServer(svc interfaces.SystemSettingService) *asynq.Server {
+	return newAsynqServer(1, map[string]int{types.QueueMultimodal: 1})
 }
 
 // NewMaintenanceAsynqServer runs connector sync, cleanup, deletion, and batch
@@ -322,6 +332,9 @@ func RunAsynqServer(params AsynqTaskParams) *asynq.ServeMux {
 	// Run the same mux on every pool. Shared and dedicated servers intentionally
 	// overlap, but Redis dequeue is atomic, so each task still executes once.
 	runPool := func(name string, srv *asynq.Server) {
+		if srv == nil {
+			return
+		}
 		go func() {
 			if err := srv.Run(mux); err != nil {
 				log.Fatalf("could not run %s asynq server: %v", name, err)
@@ -331,6 +344,7 @@ func RunAsynqServer(params AsynqTaskParams) *asynq.ServeMux {
 	runPool("core-pool", params.CoreServer)
 	runPool("postprocess-pool", params.PostProcessServer)
 	runPool("enrichment-pool", params.EnrichmentServer)
+	runPool("reserved-image-pool", params.ReservedImageServer)
 	runPool("maintenance-pool", params.MaintenanceServer)
 	runPool("shared-pool", params.SharedServer)
 	runPool("wiki-pool", params.WikiServer)

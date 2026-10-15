@@ -69,6 +69,7 @@ function resolveVueOfficePptxEntry(): string {
 
 export default defineConfig({
   define: {
+    'import.meta.env.VITE_PERSONAL_MODE': JSON.stringify('true'),
     __FRONTEND_VERSION__: JSON.stringify(FRONTEND_VERSION),
     __FRONTEND_COMMIT__: JSON.stringify(FRONTEND_COMMIT),
   },

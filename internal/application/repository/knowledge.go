@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -126,6 +127,7 @@ func (r *knowledgeRepository) ListKnowledgeProfileRows(
 // KnowledgeListFilter to a GORM query. Tenant / knowledge base scoping must be
 // applied by the caller before invoking this helper.
 func applyKnowledgeListFilter(query *gorm.DB, filter types.KnowledgeListFilter) *gorm.DB {
+	query = applyKnowledgeSourceScope(query, types.KnowledgeSourceScope{DataSourceID: filter.DataSourceID, Unassigned: filter.Unassigned})
 	if len(filter.TagIDs) > 0 {
 		query = query.Where(
 			"knowledges.id IN (SELECT knowledge_id FROM knowledge_tag_relations WHERE tag_id IN (?))",
@@ -149,11 +151,16 @@ func applyKnowledgeListFilter(query *gorm.DB, filter types.KnowledgeListFilter) 
 			return q
 		case "manual", "url":
 			return q.Where("type = ?", val)
+		case "image":
+			return q.Where("LOWER(file_type) IN ?", []string{"png", "jpg", "jpeg", "jfif", "pjpeg", "pjp", "gif", "webp", "bmp", "tif", "tiff", "svg", "svgz", "ico", "avif", "apng", "heic", "heif"})
 		default:
 			return q.Where("file_type = ?", val)
 		}
 	}
 	query = applyTypeOrFileType(query, filter.FileType)
+	if extensions := types.NormalizeKnowledgeFileTypes(filter.FileTypes); len(extensions) > 0 {
+		query = query.Where("LOWER(file_type) IN ?", extensions)
+	}
 	if filter.Source != "" {
 		switch filter.Source {
 		case "manual", "url":
@@ -313,6 +320,9 @@ func (r *knowledgeRepository) RenameKnowledgeFolderPath(
 	// behaves identically on PostgreSQL and SQLite.
 	var rows []*types.Knowledge
 	if err := r.db.WithContext(ctx).
+		Scopes(func(q *gorm.DB) *gorm.DB {
+			return applyKnowledgeSourceScope(q, types.KnowledgeSourceScopeFromContext(ctx))
+		}).
 		Select("id", "folder_path").
 		Where("tenant_id = ? AND knowledge_base_id = ? AND (folder_path = ? OR folder_path LIKE ? ESCAPE ?)",
 			tenantID, kbID, from, escapeLikeKeyword(from)+"/%", likeEscapeChar).
@@ -600,6 +610,20 @@ func (r *knowledgeRepository) UpdateKnowledgeColumns(
 ) error {
 	if len(values) == 0 {
 		return nil
+	}
+	if patch, ok := values["metadata"].(types.KnowledgeMetadataPatch); ok {
+		encoded, err := json.Marshal(patch)
+		if err != nil {
+			return err
+		}
+		switch r.db.Dialector.Name() {
+		case "postgres":
+			values["metadata"] = gorm.Expr("COALESCE(NULLIF(metadata, 'null'::jsonb), '{}'::jsonb) || CAST(? AS jsonb)", string(encoded))
+		case "sqlite":
+			values["metadata"] = gorm.Expr("json_patch(COALESCE(metadata, '{}'), ?)", string(encoded))
+		default:
+			return fmt.Errorf("atomic knowledge metadata patch is unsupported for %s", r.db.Dialector.Name())
+		}
 	}
 	if value, ok := values["error_message"]; ok {
 		switch v := value.(type) {

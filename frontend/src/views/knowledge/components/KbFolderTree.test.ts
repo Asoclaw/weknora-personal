@@ -49,6 +49,6 @@ test('the folder picker wins over the normal action menu', () => {
 test('folder navigation cancels stale card hover popovers', () => {
   assert.match(cardView, /if \(!cardElement\.isConnected/)
   assert.match(cardView, /watch\(\(\) => props\.items, dismissCardPopover\)/)
-  assert.match(cardView, /const onOpenFolder = \(path: string\)[\s\S]*?dismissCardPopover\(\)[\s\S]*?emit\('open-folder', path\)/)
-  assert.match(cardView, /@click\.stop="onOpenFolder\(item\.folder_path\)"/)
+  assert.match(cardView, /const onOpenFolder = \(path: string, item\?: any\)[\s\S]*?dismissCardPopover\(\)[\s\S]*?emit\('open-folder', path, item\)/)
+  assert.match(cardView, /@click\.stop="onOpenFolder\(item\.folder_path, item\)"/)
 })
