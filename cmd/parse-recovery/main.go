@@ -86,7 +86,7 @@ func run() error {
 	limit := 10
 	if mode == "batch" {
 		limit = 25
-	} else if mode != "pilot" && mode != "preview" && mode != "files" && mode != "reconcile" && mode != "prioritize" {
+	} else if mode != "pilot" && mode != "preview" && mode != "files" && mode != "reconcile" && mode != "prioritize" && mode != "retry-failed" {
 		return fmt.Errorf("invalid mode")
 	}
 	lock := "parse:recovery:lock"
@@ -125,6 +125,9 @@ func run() error {
 				}
 			}
 		}
+	}
+	if mode == "retry-failed" {
+		return retryFailed(ctx, db, client, live, liveImages)
 	}
 	if mode == "prioritize" {
 		if len(os.Args) != 3 {
