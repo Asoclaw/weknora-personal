@@ -327,6 +327,7 @@ func RegisterDataSourceRoutes(
 
 		// Sync management — Admin+
 		ds.POST("/:id/sync", g.Admin(), handler.ManualSync)
+		ds.POST("/:id/logs/:log_id/retry", g.Admin(), handler.RetryFailedSync)
 		ds.POST("/:id/pause", g.Admin(), handler.PauseDataSource)
 		ds.POST("/:id/resume", g.Admin(), handler.ResumeDataSource)
 

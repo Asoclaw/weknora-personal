@@ -55,6 +55,7 @@ type DataSourceService interface {
 
 	// ManualSync triggers an immediate sync for a data source
 	ManualSync(ctx context.Context, dsID string) (*types.SyncLog, error)
+	RetryFailedSync(ctx context.Context, dsID, logID string) (*types.SyncLog, error)
 
 	// PauseDataSource pauses a data source's scheduled syncs
 	PauseDataSource(ctx context.Context, id string) error

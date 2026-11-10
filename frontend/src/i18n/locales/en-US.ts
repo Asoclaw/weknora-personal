@@ -6550,6 +6550,12 @@ export default {
     daysAgo: '{days} days ago'
   },
   datasource: {
+    retryFailedItems: "Retry failed items",
+    retryAfterSync: "Retry after the current sync finishes",
+    retrySubmitted: "Failed-item retry submitted",
+    retryFailed: "Could not submit retry",
+    failedItemsRetry: "Failed-item retry",
+    failedItemsSummary: "{n} items failed to sync",
     title: 'Data Sources',
     description: 'Configure external data sources to sync content into this knowledge base',
     add: 'Add Data Source',

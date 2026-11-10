@@ -360,3 +360,8 @@ replace go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelg
 // The anydoc Go bindings are not published yet (firecrawl/anydoc#30 is still
 // open), so they are vendored. Drop this replace once upstream tags go/vX.Y.Z.
 replace github.com/firecrawl/anydoc/go => ./third_party/anydoc-go
+
+// grpc-gateway v1 still imports the alias removed from modern genproto.
+require google.golang.org/genproto/protobuf/field_mask v0.0.0 // indirect
+
+replace google.golang.org/genproto/protobuf/field_mask => ./third_party/genproto-field-mask

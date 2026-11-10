@@ -241,7 +241,11 @@ func emit(ctx context.Context, h datasource.StreamHandler, item types.FetchedIte
 	return err == nil, err
 }
 func failure(id, title, reason string) types.FetchedItem {
-	return types.FetchedItem{ExternalID: id, Title: title, Metadata: map[string]string{"channel": "mockplus", "error": reason}}
+	metadata := map[string]string{"channel": "mockplus", "error": reason, "retry_kind": "project", "project_id": id, "retry_phase": "fetch"}
+	if parts := strings.Split(id, ":"); len(parts) == 4 && parts[0] == "mockplus" {
+		metadata["retry_kind"], metadata["project_id"], metadata["board_id"] = "board", parts[2], parts[3]
+	}
+	return types.FetchedItem{ExternalID: id, Title: title, Metadata: metadata}
 }
 
 // Project children can be groups instead of boards. Groups are containers,
@@ -317,15 +321,37 @@ func (c *Connector) fetch(ctx context.Context, config *types.DataSourceConfig, c
 			projects = append(projects, n)
 		}
 	}
+	var retryGroups map[string][]types.SyncRetryTarget
+	if config.RetryOnly {
+		projects, retryGroups, err = retryProjects(ctx, config, projects, state, h)
+		if err != nil {
+			return nil, err
+		}
+	}
+	projectFailure := func(project treeNode, reason string) error {
+		if config.RetryOnly {
+			for _, target := range retryGroups[project.id()] {
+				if _, e := emit(ctx, h, retryFailure(target, reason)); e != nil {
+					return e
+				}
+			}
+			return nil
+		}
+		_, e := emit(ctx, h, failure(project.id(), project.Path, reason))
+		return e
+	}
 	// Archived folders may have no children in the provider snapshot. Only an
 	// explicit inactive flag, never absence from a tree, authorizes tombstones.
 	inactiveApps := map[string]bool{}
 	for _, n := range projects {
-		if n.Inactive {
+		if n.Inactive && !config.RetryOnly {
 			inactiveApps[n.id()] = true
 		}
 	}
 	for _, old := range state {
+		if config.RetryOnly {
+			break
+		}
 		for id := range selected {
 			if n := tree[id]; n.Inactive && (old.Path == n.Path || strings.HasPrefix(old.Path, n.Path+" / ")) {
 				inactiveApps[old.AppID] = true
@@ -359,12 +385,18 @@ func (c *Connector) fetch(ctx context.Context, config *types.DataSourceConfig, c
 			IsDeleted  bool    `json:"isDeleted"`
 		}
 		if err := cl.api(ctx, "/api/v1/app/"+url.PathEscape(project.id()), &detail); err != nil {
-			if _, e := emit(ctx, h, failure(project.id(), project.Path, err.Error())); e != nil {
+			if e := projectFailure(project, err.Error()); e != nil {
 				return nil, e
 			}
 			continue
 		}
 		if detail.IsArchived || detail.Archived || detail.IsDeleted {
+			if config.RetryOnly {
+				if e := projectFailure(project, "失败项目已停用，保留已有文件"); e != nil {
+					return nil, e
+				}
+				continue
+			}
 			for id, old := range state {
 				if old.AppID == project.id() {
 					if _, e := emit(ctx, h, types.FetchedItem{ExternalID: id, Title: old.Title, IsDeleted: true}); e != nil {
@@ -375,17 +407,23 @@ func (c *Connector) fetch(ctx context.Context, config *types.DataSourceConfig, c
 			continue
 		}
 		if detail.Children == nil {
-			if _, e := emit(ctx, h, failure(project.id(), project.Path, "摹客项目响应缺少画板列表，保留原资料")); e != nil {
+			if e := projectFailure(project, "摹客项目响应缺少画板列表，保留原资料"); e != nil {
 				return nil, e
 			}
 			continue
 		}
 		boards, err := projectBoards(*detail.Children)
 		if err != nil {
-			if _, e := emit(ctx, h, failure(project.id(), project.Path, err.Error())); e != nil {
+			if e := projectFailure(project, err.Error()); e != nil {
 				return nil, e
 			}
 			continue
+		}
+		if config.RetryOnly {
+			boards, err = retryBoards(ctx, cl, project, boards, retryGroups[project.id()], h)
+			if err != nil {
+				return nil, err
+			}
 		}
 		seen := map[string]bool{}
 		for start := 0; start < len(boards); start += 4 {
@@ -495,6 +533,9 @@ func (c *Connector) fetch(ctx context.Context, config *types.DataSourceConfig, c
 					continue
 				}
 				if r.board.inactive() {
+					if config.RetryOnly {
+						continue
+					}
 					if old, ok := state[r.id]; ok {
 						if _, e := emit(ctx, h, types.FetchedItem{ExternalID: r.id, Title: old.Title, IsDeleted: true}); e != nil {
 							return nil, e

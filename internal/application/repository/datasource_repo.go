@@ -5,9 +5,11 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Tencent/WeKnora/internal/datasource"
 	"github.com/Tencent/WeKnora/internal/types"
 	"github.com/Tencent/WeKnora/internal/types/interfaces"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // DataSourceRepository provides data access for data sources
@@ -165,10 +167,31 @@ func (r *SyncLogRepository) Create(ctx context.Context, log *types.SyncLog) erro
 	if log == nil {
 		return errors.New("sync log is nil")
 	}
-	if err := r.db.WithContext(ctx).Create(log).Error; err != nil {
-		return err
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if log.Status == types.SyncLogStatusRunning {
+			var ds types.DataSource
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND deleted_at IS NULL", log.DataSourceID).First(&ds).Error; err != nil {
+				return err
+			}
+			var count int64
+			if err := tx.Model(&types.SyncLog{}).Where("data_source_id = ? AND status = ?", log.DataSourceID, types.SyncLogStatusRunning).Count(&count).Error; err != nil {
+				return err
+			}
+			if count > 0 {
+				return datasource.ErrSyncBusy
+			}
+		}
+		return tx.Create(log).Error
+	})
+}
+
+func (r *SyncLogRepository) FindLatestFailed(ctx context.Context, dsID string) (*types.SyncLog, error) {
+	var log types.SyncLog
+	err := r.db.WithContext(ctx).Where("data_source_id = ? AND items_failed > 0 AND status IN ?", dsID, []string{types.SyncLogStatusFailed, types.SyncLogStatusPartial}).Order("started_at DESC").First(&log).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
 	}
-	return nil
+	return &log, err
 }
 
 // FindByID retrieves a sync log by ID

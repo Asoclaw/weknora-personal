@@ -39,6 +39,8 @@ type DataSourceResponse struct {
 	UpdatedAt            time.Time            `json:"updated_at"`
 	TotalItemsSynced     int64                `json:"total_items_synced"`
 	LatestSyncLog        *types.SyncLog       `json:"latest_sync_log,omitempty"`
+	RetrySyncLogID       string               `json:"retry_sync_log_id,omitempty"`
+	SyncRunning          bool                 `json:"sync_running"`
 	// Single logical credential field — DataSource credentials are a
 	// per-connector atomic map, so "configured?" applies to the whole set.
 	Credentials map[string]CredentialFieldMetadata `json:"credentials,omitempty"`
@@ -90,6 +92,8 @@ func NewDataSourceResponse(ds *types.DataSource) *DataSourceResponse {
 		UpdatedAt:            ds.UpdatedAt,
 		TotalItemsSynced:     ds.TotalItemsSynced,
 		LatestSyncLog:        ds.LatestSyncLog,
+		RetrySyncLogID:       ds.RetrySyncLogID,
+		SyncRunning:          ds.SyncRunning,
 		Credentials: map[string]CredentialFieldMetadata{
 			"credentials": {Configured: configured},
 		},

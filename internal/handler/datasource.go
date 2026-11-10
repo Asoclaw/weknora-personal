@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -490,6 +491,38 @@ func (h *DataSourceHandler) ManualSync(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, syncLog)
+}
+
+// RetryFailedSync godoc
+// @Summary Retry failed items from a completed sync
+// @Tags DataSource
+// @Param id path string true "Data source ID"
+// @Param log_id path string true "Failed sync log ID"
+// @Success 202 {object} types.SyncLog
+// @Failure 400 {object} map[string]string
+// @Failure 409 {object} map[string]string
+// @Router /datasource/{id}/logs/{log_id}/retry [post]
+func (h *DataSourceHandler) RetryFailedSync(c *gin.Context) {
+	ctx := c.Request.Context()
+	tenantID := h.getTenantID(c)
+	if tenantID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	if _, status, msg := h.getOwnedDataSource(ctx, tenantID, c.Param("id")); status != http.StatusOK {
+		c.JSON(status, gin.H{"error": msg})
+		return
+	}
+	log, err := h.service.RetryFailedSync(ctx, c.Param("id"), c.Param("log_id"))
+	if err != nil {
+		status := http.StatusBadRequest
+		if errors.Is(err, datasource.ErrSyncBusy) {
+			status = http.StatusConflict
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusAccepted, log)
 }
 
 // PauseDataSource godoc

@@ -1,14 +1,24 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getSyncLogs, type SyncLog, type SyncItemError } from '@/api/datasource'
+import { useAuthStore } from '@/stores/auth'
+import DataSourceRetryButton from './DataSourceRetryButton.vue'
 
 const props = defineProps<{
   dataSourceId: string
   dataSourceName?: string
+  dataSourceType?: string
+  syncRunning?: boolean
 }>()
 const visible = defineModel<boolean>('visible', { default: false })
 const { t } = useI18n()
+const authStore = useAuthStore()
+const emit = defineEmits<{ (e: 'retried'): void }>()
+let pollTimer: ReturnType<typeof setTimeout> | undefined
+const busy = computed(() => props.syncRunning || logs.value.some(log => log.status === 'running'))
+function stopPolling() { if (pollTimer) clearTimeout(pollTimer); pollTimer = undefined }
+onBeforeUnmount(stopPolling)
 
 const logs = ref<SyncLog[]>([])
 const loading = ref(false)
@@ -16,12 +26,12 @@ const loadingMore = ref(false)
 const hasMore = ref(false)
 const expandedId = ref('')
 const pageSize = 50
-async function fetchLogs(reset = true) {
+async function fetchLogs(reset = true, silent = false) {
   if (!props.dataSourceId) return
 
-  if (reset) {
+  if (reset && !silent) {
     loading.value = true
-  } else {
+  } else if (!silent) {
     loadingMore.value = true
   }
 
@@ -38,13 +48,21 @@ async function fetchLogs(reset = true) {
   } else {
     loadingMore.value = false
   }
+  stopPolling()
+  if (visible.value && busy.value) pollTimer = setTimeout(() => fetchLogs(true, true), 3000)
 }
 
 watch(visible, (v) => {
-  if (!v) return
+  if (!v) { stopPolling(); return }
   expandedId.value = ''
   fetchLogs(true)
 })
+
+async function onRetried(logId: string) {
+  emit('retried')
+  expandedId.value = logId
+  await fetchLogs(true, true)
+}
 
 function toggleExpand(id: string) {
   expandedId.value = expandedId.value === id ? '' : id
@@ -255,6 +273,7 @@ const groupedLogs = computed(() => {
             <div class="tl-content">
               <div class="tl-header">
                 <span class="tl-status" :style="{ color: statusColor(log.status) }">
+                  <template v-if="log.result?.retry_of_log_id">{{ t('datasource.failedItemsRetry') }} · </template>
                   {{ t(`datasource.logStatus.${log.status}`) }}
                 </span>
                 <span class="tl-time">{{ formatHourMin(log.started_at) }}</span>
@@ -287,7 +306,8 @@ const groupedLogs = computed(() => {
                 <!-- Localised failure summary; raw error_message only for a
                      pure infra failure with no per-document detail. -->
                 <div v-if="log.items_failed > 0" class="tl-error">
-                  {{ t('datasource.logDetail.docsFailedSummary', { n: log.items_failed }) }}
+                  <span>{{ t('datasource.failedItemsSummary', { n: log.items_failed }) }}</span>
+                  <DataSourceRetryButton v-if="authStore.hasRole('admin') && dataSourceType === 'mockplus' && ['failed', 'partial'].includes(log.status)" :data-source-id="dataSourceId" :log-id="log.id" :busy="!!busy" @retried="onRetried" />
                 </div>
                 <div v-else-if="log.error_message" class="tl-error">
                   {{ log.error_message }}
@@ -558,6 +578,11 @@ const groupedLogs = computed(() => {
 }
 
 .tl-error {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  > span:first-child { flex: 1; min-width: 100px; }
   margin-top: 8px;
   padding: 8px 12px;
   border-radius: var(--app-radius-sm);

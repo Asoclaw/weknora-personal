@@ -6550,6 +6550,12 @@ export default {
     daysAgo: '{days}日前'
   },
   datasource: {
+    retryFailedItems: "失敗項目を再試行",
+    retryAfterSync: "現在の同期完了後に再試行できます",
+    retrySubmitted: "再試行を開始しました",
+    retryFailed: "再試行を開始できませんでした",
+    failedItemsRetry: "失敗項目の再試行",
+    failedItemsSummary: "{n} 件の同期に失敗",
     title: 'データソース',
     description: 'このナレッジベースにコンテンツを同期する外部データソースを設定します',
     add: 'データソースを追加',

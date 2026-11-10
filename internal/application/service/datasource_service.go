@@ -21,6 +21,7 @@ import (
 	"github.com/Tencent/WeKnora/internal/types/interfaces"
 	secutils "github.com/Tencent/WeKnora/internal/utils"
 	"github.com/hibiken/asynq"
+	"github.com/redis/go-redis/v9"
 )
 
 // DataSourceService implements the DataSourceService interface
@@ -35,6 +36,7 @@ type DataSourceService struct {
 	tenantRepo        interfaces.TenantRepository
 	tagService        interfaces.KnowledgeTagService
 	audit             interfaces.AuditLogService
+	redisClient       *redis.Client
 }
 
 // NewDataSourceService creates a new data source service
@@ -49,6 +51,7 @@ func NewDataSourceService(
 	tenantRepo interfaces.TenantRepository,
 	tagService interfaces.KnowledgeTagService,
 	audit interfaces.AuditLogService,
+	redisClient *redis.Client,
 ) interfaces.DataSourceService {
 	return &DataSourceService{
 		dsRepo:            dsRepo,
@@ -61,6 +64,7 @@ func NewDataSourceService(
 		tenantRepo:        tenantRepo,
 		tagService:        tagService,
 		audit:             audit,
+		redisClient:       redisClient,
 	}
 }
 
@@ -138,6 +142,24 @@ func (s *DataSourceService) ListDataSources(ctx context.Context, kbID string) ([
 		log, _ := s.syncLogRepo.FindLatest(ctx, ds.ID)
 		if log != nil {
 			ds.LatestSyncLog = log
+		}
+		ds.SyncRunning, _ = s.syncLogRepo.HasRunningSync(ctx, ds.ID)
+		if ds.Type == types.ConnectorTypeMockplus && ds.ErrorMessage != "" {
+			result, _ := ds.ParseSyncResult()
+			if result != nil && result.Failed > 0 && result.SyncLogID != "" {
+				if failed, _ := s.syncLogRepo.FindByID(ctx, result.SyncLogID); failed != nil && failed.DataSourceID == ds.ID && failed.ItemsFailed > 0 && failed.ErrorMessage == ds.ErrorMessage {
+					ds.RetrySyncLogID = failed.ID
+				}
+			}
+			if result != nil && result.Failed > 0 && result.SyncLogID == "" {
+				if repo, ok := s.syncLogRepo.(interface {
+					FindLatestFailed(context.Context, string) (*types.SyncLog, error)
+				}); ok {
+					if failed, _ := repo.FindLatestFailed(ctx, ds.ID); failed != nil && failed.ErrorMessage == ds.ErrorMessage {
+						ds.RetrySyncLogID = failed.ID
+					}
+				}
+			}
 		}
 	}
 
@@ -618,6 +640,47 @@ func (s *DataSourceService) ProcessSync(ctx context.Context, task *asynq.Task) e
 		logger.Errorf(ctx, "failed to get sync log: %v", err)
 		return nil
 	}
+	if syncLog.Status == types.SyncLogStatusCanceled {
+		return nil
+	}
+	leaseCtx, release, leaseErr := s.acquireSyncLease(ctx, ds.ID, syncLog.ID)
+	if leaseErr != nil {
+		s.markSyncInterrupted(ctx, syncLog)
+		return leaseErr
+	}
+	defer release()
+	defer func() {
+		if leaseCtx.Err() != nil {
+			s.markSyncInterrupted(ctx, syncLog)
+		}
+	}()
+	ctx = leaseCtx
+	ds, err = s.GetDataSource(ctx, payload.DataSourceID)
+	if err != nil {
+		return err
+	}
+	syncLog, err = s.syncLogRepo.FindByID(ctx, payload.SyncLogID)
+	if err != nil {
+		return err
+	}
+	if syncLog.Status == types.SyncLogStatusCanceled {
+		return nil
+	}
+	if latest, _ := s.syncLogRepo.FindLatest(ctx, ds.ID); latest != nil && latest.ID != syncLog.ID && latest.StartedAt.After(syncLog.StartedAt) {
+		syncLog.Status = types.SyncLogStatusCanceled
+		syncLog.FinishedAt = timePtr(time.Now().UTC())
+		syncLog.ErrorMessage = "已被更新的同步任务替代"
+		_ = s.syncLogRepo.UpdateResult(ctx, syncLog)
+		return nil
+	}
+	if syncLog.Status == types.SyncLogStatusFailed {
+		syncLog.Status = types.SyncLogStatusRunning
+		syncLog.FinishedAt = nil
+		syncLog.ErrorMessage = ""
+		if err := s.syncLogRepo.UpdateResult(ctx, syncLog); err != nil {
+			return err
+		}
+	}
 
 	kb, kbErr := s.kbService.GetKnowledgeBaseByID(ctx, ds.KnowledgeBaseID)
 	if kbErr != nil {
@@ -670,6 +733,9 @@ func (s *DataSourceService) ProcessSync(ctx context.Context, task *asynq.Task) e
 	// Surface the KB's multimodal/VLM state to the connector so it only extracts
 	// embedded images for OCR when the KB can actually ingest them (never persisted).
 	config.MultimodalEnabled = kb.IsMultimodalEnabled()
+	if payload.RetryOfLogID != "" {
+		return s.processFailedSyncRetry(ctx, ds, syncLog, config, payload, wasPaused, connector)
+	}
 
 	// Streaming path: connectors that support it interleave fetch→ingest→
 	// checkpoint so a large sync bounds memory and resumes after a timeout
@@ -867,6 +933,13 @@ func (s *DataSourceService) applyFetchedItem(
 	ctx context.Context, ds *types.DataSource, item *types.FetchedItem,
 	tagIDs []string, result *types.SyncResult,
 ) {
+	failedBefore := result.Failed
+	defer func() {
+		if ds.Type == types.ConnectorTypeMockplus && result.Failed > failedBefore {
+			result.RetryTargets = append(result.RetryTargets, syncRetryTarget(item))
+			result.RetryManifest = true
+		}
+	}()
 	if item.IsDeleted {
 		if !ds.SyncDeletions {
 			// Sync deletion disabled: neither count nor delete.
@@ -1027,6 +1100,9 @@ func (h *streamSyncHandler) ShouldRetryItem(ctx context.Context, externalID stri
 	if err != nil {
 		return false, err
 	}
+	if isTargetedSyncRetry(ctx) {
+		return item == nil, nil
+	}
 	return item == nil || item.ParseStatus == types.ParseStatusFailed || item.ParseStatus == types.ParseStatusCancelled, nil
 }
 
@@ -1116,6 +1192,9 @@ func (s *DataSourceService) processSyncStreaming(
 
 	result := &types.SyncResult{}
 	handler := &streamSyncHandler{svc: s, ds: ds, tagIDs: autoTagIDs, result: result, syncLog: syncLog}
+	result.SyncLogID = syncLog.ID
+	result.RetryManifest = ds.Type == types.ConnectorTypeMockplus
+	result.RetryScope = syncRetryScope(config)
 
 	fullBaseline := startCursor
 	if forceFull {
@@ -1408,6 +1487,9 @@ func (s *DataSourceService) ingestItem(ctx context.Context, ds *types.DataSource
 		if err != nil {
 			return false, fmt.Errorf("check existing source knowledge: %w", err)
 		} else if existing != nil {
+			if isTargetedSyncRetry(ctx) && existing.ParseStatus == types.ParseStatusCancelled {
+				return false, types.NewDuplicateFileError(existing)
+			}
 			// Older Tencent Docs cursors did not retain links. Preserve an already
 			// stored link when the provider temporarily omits it on re-ingestion.
 			if ds.Type == types.ConnectorTypeTencentDocs && metadata["source_url"] == "" {
@@ -1428,7 +1510,7 @@ func (s *DataSourceService) ingestItem(ctx context.Context, ds *types.DataSource
 				}
 				// Retry a failed parse in place. Cancellation is a user decision;
 				// ordinary synchronization must not restart cancelled work.
-				if existing.ParseStatus == types.ParseStatusFailed {
+				if existing.ParseStatus == types.ParseStatusFailed && !isTargetedSyncRetry(ctx) {
 					if _, err := s.knowledgeService.ReparseKnowledge(ctx, existing.ID, nil); err != nil {
 						return false, err
 					}

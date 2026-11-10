@@ -828,6 +828,12 @@ export default {
     }
   },
   datasource: {
+    retryFailedItems: "重试失败项",
+    retryAfterSync: "当前同步结束后可重试",
+    retrySubmitted: "已提交失败项重试",
+    retryFailed: "重试提交失败",
+    failedItemsRetry: "失败项重试",
+    failedItemsSummary: "{n} 项同步失败",
     title: '数据源管理',
     description: '配置外部数据源，自动同步内容到知识库',
     add: '添加数据源',

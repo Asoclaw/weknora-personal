@@ -464,7 +464,7 @@
           {{ $t('knowledgeEditor.postCreateHint.footer') }}
         </span>
       </p>
-      <p v-if="isInstantSection" class="settings-footer-note">
+      <p v-if="isInstantSection && currentSection !== 'datasource'" class="settings-footer-note">
         <t-icon name="info-circle-filled" class="settings-footer-note__icon" />
         <span>{{ $t('knowledgeEditor.footer.instantEffect') }}</span>
       </p>

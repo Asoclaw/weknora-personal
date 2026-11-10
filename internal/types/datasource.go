@@ -128,7 +128,9 @@ type DataSource struct {
 	TotalItemsSynced int64 `json:"total_items_synced" gorm:"-"`
 
 	// Latest sync log (not stored in DB, populated on query)
-	LatestSyncLog *SyncLog `json:"latest_sync_log" gorm:"-"`
+	LatestSyncLog  *SyncLog `json:"latest_sync_log" gorm:"-"`
+	RetrySyncLogID string   `json:"retry_sync_log_id,omitempty" gorm:"-"`
+	SyncRunning    bool     `json:"sync_running" gorm:"-"`
 }
 
 // TableName specifies the table name for DataSource
@@ -219,6 +221,9 @@ func (s *SyncLog) BeforeCreate(tx *gorm.DB) error {
 // included in API responses — handlers serialize via dto.NewDataSourceResponse
 // which strips the Credentials map by construction.
 type DataSourceConfig struct {
+	// Runtime-only bounded retry selection; never saved as source configuration.
+	RetryOnly    bool              `json:"-"`
+	RetryTargets []SyncRetryTarget `json:"-"`
 	// Common fields applicable to most connectors
 	Type string `json:"type"`
 
@@ -464,6 +469,13 @@ type SyncCursor struct {
 
 // SyncResult summarizes the outcome of a sync operation
 type SyncResult struct {
+	// Complete retry manifest, separate from the capped display samples.
+	RetryTargets       []SyncRetryTarget `json:"retry_targets,omitempty"`
+	RetryManifest      bool              `json:"retry_manifest,omitempty"`
+	RetryScope         string            `json:"retry_scope,omitempty"`
+	RetryOfLogID       string            `json:"retry_of_log_id,omitempty"`
+	UnresolvedFailures int               `json:"unresolved_failures,omitempty"`
+	SyncLogID          string            `json:"sync_log_id,omitempty"`
 	// Total items processed
 	Total int `json:"total"`
 
@@ -509,6 +521,17 @@ type SyncItemError struct {
 	Message string `json:"message,omitempty"`
 }
 
+// SyncRetryTarget identifies a failed source object without storing URLs or secrets.
+// Legacy entries retain their exact full title until the connector can resolve it.
+type SyncRetryTarget struct {
+	Kind       string `json:"kind"`
+	ExternalID string `json:"external_id,omitempty"`
+	ProjectID  string `json:"project_id,omitempty"`
+	BoardID    string `json:"board_id,omitempty"`
+	Title      string `json:"title,omitempty"`
+	Phase      string `json:"phase,omitempty"`
+}
+
 // Display renders the sample as a single plain string for server-side use
 // (logs, fatal-error detail). The localised UI string is built on the frontend
 // from Code/Params; this is only a non-localised fallback.
@@ -542,6 +565,7 @@ func (e *SyncItemError) UnmarshalJSON(b []byte) error {
 
 // DataSourceSyncPayload represents the asynq task payload for data source sync
 type DataSourceSyncPayload struct {
+	RetryOfLogID string `json:"retry_of_log_id,omitempty"`
 	TracingContext
 	Initiator TaskInitiator `json:"initiator,omitempty"`
 	// Trigger distinguishes a user-requested run from a scheduler-created run.

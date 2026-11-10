@@ -828,6 +828,12 @@ export default {
     }
   },
   datasource: {
+    retryFailedItems: "실패 항목 재시도",
+    retryAfterSync: "현재 동기화 완료 후 재시도할 수 있습니다",
+    retrySubmitted: "재시도를 요청했습니다",
+    retryFailed: "재시도를 요청하지 못했습니다",
+    failedItemsRetry: "실패 항목 재시도",
+    failedItemsSummary: "{n}개 항목 동기화 실패",
     title: '데이터 소스 관리',
     description: '외부 데이터 소스를 구성하여 콘텐츠를 지식베이스에 자동 동기화',
     add: '데이터 소스 추가',

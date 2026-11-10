@@ -22,6 +22,8 @@ export interface DataSource {
   created_at: string
   updated_at: string
   latest_sync_log?: SyncLog
+  retry_sync_log_id?: string
+  sync_running?: boolean
 }
 
 /**
@@ -37,6 +39,7 @@ export interface SyncItemError {
 }
 
 export interface SyncResultDetail {
+  retry_of_log_id?: string
   total?: number
   created?: number
   updated?: number
@@ -135,6 +138,10 @@ export function resolveResourceAncestors(id: string, resourceIds: string[]) {
 
 export function triggerSync(id: string) {
   return post(`/api/v1/datasource/${id}/sync`, {})
+}
+
+export function retryFailedSync(id: string, logId: string) {
+  return post(`/api/v1/datasource/${encodeURIComponent(id)}/logs/${encodeURIComponent(logId)}/retry`, {})
 }
 
 export function pauseDataSource(id: string) {

@@ -13,6 +13,7 @@ import {
 import { humanizeCron, relativeTime } from '@/utils/cronHumanize'
 import DataSourceEditorDialog from './DataSourceEditorDialog.vue'
 import DataSourceSyncLogs from './DataSourceSyncLogs.vue'
+import DataSourceRetryButton from './DataSourceRetryButton.vue'
 import DataSourceTypeIcon from './DataSourceTypeIcon.vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -56,7 +57,7 @@ async function loadList(silent = false) {
     dataSources.value = res?.data || res || []
     emit('count', dataSources.value.length)
 
-    const hasRunningSync = dataSources.value.some(ds => ds.latest_sync_log?.status === 'running')
+    const hasRunningSync = dataSources.value.some(isSyncRunning)
     if (hasRunningSync) {
       schedulePolling()
     } else {
@@ -169,7 +170,7 @@ function lastSyncStatusLabel(ds: DataSource) {
 }
 
 function isSyncRunning(ds: DataSource) {
-  return ds.latest_sync_log?.status === 'running'
+  return ds.sync_running || ds.latest_sync_log?.status === 'running'
 }
 
 function onEditorSaved() {
@@ -185,7 +186,6 @@ onBeforeUnmount(stopPolling)
   <div class="ds-settings">
     <div class="section-header">
       <h2>{{ t('datasource.title') }}</h2>
-      <p class="section-description">{{ t('datasource.description') }}</p>
     </div>
 
     <t-loading :loading="loading" size="small" class="ds-list-loading">
@@ -198,7 +198,11 @@ onBeforeUnmount(stopPolling)
 
       <div v-else-if="!loading" class="ds-grid">
         <component
-          :is="canManageDataSource ? 'button' : 'div'"
+          :is="'div'"
+          :role="canManageDataSource ? 'button' : undefined"
+          :tabindex="canManageDataSource ? 0 : undefined"
+          @keydown.enter.self="canManageDataSource && openEdit(ds)"
+          @keydown.space.self.prevent="canManageDataSource && openEdit(ds)"
           v-for="ds in dataSources"
           :key="ds.id"
           :type="canManageDataSource ? 'button' : undefined"
@@ -305,7 +309,8 @@ onBeforeUnmount(stopPolling)
             </p>
             <div v-if="ds.error_message" class="ds-card__error">
               <t-icon name="error-circle-filled" size="14px" />
-              <span>{{ ds.error_message }}</span>
+              <span class="ds-card__error-text">{{ ds.type === 'mockplus' && ds.retry_sync_log_id && ds.last_sync_result?.failed > 0 ? t('datasource.failedItemsSummary', { n: ds.last_sync_result.failed }) : ds.error_message }}</span>
+              <DataSourceRetryButton v-if="canManageDataSource && ds.type === 'mockplus' && ds.retry_sync_log_id" :data-source-id="ds.id" :log-id="ds.retry_sync_log_id" :busy="isSyncRunning(ds)" @retried="loadList(true)" />
             </div>
           </div>
         </component>
@@ -335,6 +340,9 @@ onBeforeUnmount(stopPolling)
       v-model:visible="logsVisible"
       :data-source-id="logsDsId"
       :data-source-name="logsDsName"
+      :data-source-type="dataSources.find(ds => ds.id === logsDsId)?.type"
+      :sync-running="!!dataSources.find(ds => ds.id === logsDsId)?.sync_running"
+      @retried="loadList(true)"
     />
   </div>
 </template>
@@ -581,6 +589,8 @@ onBeforeUnmount(stopPolling)
     font-size: var(--app-text-sm);
     line-height: 1.45;
     text-align: left;
+    flex-wrap: wrap;
+    &-text { flex: 1; min-width: 100px; overflow-wrap: anywhere; }
   }
 
   &__actions {

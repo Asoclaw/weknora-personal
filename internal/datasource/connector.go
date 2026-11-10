@@ -117,6 +117,11 @@ type FullStreamingConnector interface {
 	) (*types.SyncCursor, error)
 }
 
+// FailedItemsConnector optionally supports bounded recovery without a full walk.
+type FailedItemsConnector interface {
+	FetchRetryStream(context.Context, *types.DataSourceConfig, *types.SyncCursor, []types.SyncRetryTarget, StreamHandler) (*types.SyncCursor, error)
+}
+
 // FullSyncWithCursor is optional. The batch sync path uses it for ForceFull and
 // sync_mode=full so a connector can re-fetch every document while still
 // reconciling deletions against the previous cursor. Connectors that omit it
